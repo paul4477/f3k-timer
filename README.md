@@ -19,6 +19,6 @@ In addition, the application will allow external integrations with time display 
   * Potentially could include score info for display between groups/rounds
   * Potentially could include pilot specific "please enter your score" messages based on lack of score data
 
-- Others?
+- Others? - user extensible with well defined interface
 
 Local control will be via web interface allowing headless running. This will use websockets for interactive status and messages and control.
