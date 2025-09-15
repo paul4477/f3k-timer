@@ -109,9 +109,20 @@ class Game:
 html_page = """
 <html><head>
 <script>
-function setup() {{
-const wsUri = "http://192.168.64.221:8080/get_ticks/";
+ const wsUri = "http://192.168.64.221:8080/get_ticks/";
 const socket = new WebSocket(wsUri);
+    
+          // Button click handler
+    function send_message(s) {{
+
+        socket.send(s);  // <-- send message via WebSocket
+        console.log("Sent:", s);
+        
+
+    }};
+
+function setup() {{
+
 
 
     // When connection opens
@@ -142,14 +153,7 @@ const socket = new WebSocket(wsUri);
     }});
 
 
-    // Button click handler
-    function send_message(s) {{
 
-        socket.send(s);  // <-- send message via WebSocket
-        console.log("Sent:", s);
-        
-
-    }};
 }}
   </script>
 </head>"""+"""<body onLoad="setup()"><table>
