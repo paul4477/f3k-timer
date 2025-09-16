@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>POST /timesync Example</title>
+  <script src="/timesync.js"></script>
+<script>
+
+function pad0 (value, count) {
+  var result = value.toString()
+  for (; result.length < count; --count) {
+    result = '0' + result
+  }
+  return result
+}
+
+function formatTime (time, showTenths = false) {
+  const minutes = Math.floor(time / 60)
+  const seconds = Math.floor(time % 60)
+  const fraction = (time * 10) % 10
+  if (showTenths) {
+    return `${pad0(minutes, 2)}:${pad0(seconds, 2)}.${Math.floor(fraction)}`
+  } else { 
+    if (fraction > 0) {
+      return `${pad0(minutes, 2)}:${pad0(seconds+1, 2)}` 
+    }
+    else {
+      return `${pad0(minutes, 2)}:${pad0(seconds, 2)}` 
+    }
+
+  }
+}
+window.ts = timesync.create({
+      server: '/timesync/',
+      interval: 50000
+    })
+
+</script>
+
+ 
+
+<script>
+ const wsUri = "http://192.168.64.221:8080/get_ticks/";
+const socket = new WebSocket(wsUri);
+    
+          // Button click handler
+    function send_message(s) {{
+
+        socket.send(s);  // <-- send message via WebSocket
+        console.log("Sent:", s);
+        
+
+    }};
+
+function setup() {{
+
+
+
+    // When connection opens
+    socket.addEventListener("open", () => {{
+      console.log("Connected to server.");
+      socket.send("Hello from browser!");
+    }});
+
+    // When a message arrives
+    socket.addEventListener("message", (event) => {{
+      console.log("Received:", event.data);
+
+      // Append to page
+      const h = document.getElementById("time");
+      const h2 = document.getElementById("timesyncd");
+      j = JSON.parse(event.data);
+      window.ticks = j.ticks;
+      window.endtime = j.endtime;
+    //h.textContent = j.ticks;
+      //h2.textContent = ((j.endtime - window.ts.now())/1000).toFixed(0);
+
+      
+    }});
+
+
+    setInterval(function()
+  {
+
+      const h = document.getElementById("time");
+      const h2 = document.getElementById("timesyncd");
+      h.textContent = formatTime(window.ticks);
+      if (window.endtime - window.ts.now() >= 0)
+      {h2.textContent = formatTime(((window.endtime - window.ts.now())/1000), showTenths=true);}
+  }, 50)
+    // Handle close
+    socket.addEventListener("close", () => {{
+      console.log("Connection closed.");
+    }});
+
+    // Handle errors
+    socket.addEventListener("error", (err) => {{
+      console.error("WebSocket error:", err);
+    }});
+
+
+
+}}
+  </script>
+
+</head>
+
+<body onload="setup()">
+  <h2>POST to /timesync</h2>
+
+  <!-- Input for ID -->
+  <input type="text" id="idInput" placeholder="Enter ID">
+  <button id="postBtn">Send POST</button>
+
+  <div id="result"></div>
+
+
+<h1 id="time">0</h1>
+<h1 id="timesyncd">0</h1>
+<button onclick="send_message('r')">WS RIGHT</button>
+<div id="messages"></div></body></html>
+
+
+ <script>
+
+      // get notified on changes in the offset
+  window.ts.on('change', function (offset) {
+    console.log('changed offset: ' + offset + ' ms Time: '+ ts.now());
+  });
+    document.getElementById("postBtn").addEventListener("click", async () => {
+      const idValue = document.getElementById("idInput").value.trim();
+
+
+
+      try {
+        // Send POST with JSON body
+        const response = await fetch("http://192.168.64.221:8080/timesync/", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ id: idValue })
+        });
+
+        const data = await response.text(); // or .json() if server returns JSON
+        console.log("POST response:", data);
+        document.getElementById("result").textContent = "Response: " + data;
+      } catch (err) {
+        console.error("POST request failed:", err);
+        document.getElementById("result").textContent = "Error: " + err;
+      }
+    });
+  </script>
+
+</body>
+</html>

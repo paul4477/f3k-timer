@@ -2,7 +2,11 @@ import asyncio
  
 from aiohttp import web
 import pygame
- 
+import json 
+import time
+import decimal
+Decimal = decimal.Decimal
+
 # async version of pygame.time.Clock
 class Clock:
     def __init__(self, time_func=pygame.time.get_ticks):
@@ -170,7 +174,10 @@ function setup() {{
 <button onclick="send_message('r')">WS RIGHT</button>
 <div id="messages"></div></body></html>
 """
- 
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Headers": "*"
+}
  
 class WebFrontend:
     def __init__(self, port=8080):
@@ -179,12 +186,15 @@ class WebFrontend:
         self.app = web.Application()
         self.ticks = 0
         self.clients = set()
+        self.app.router.add_static('/', '.')
+        #self.app.router.index_resource.set_handler('test.html')
         self.app.add_routes(
             [
-                web.get("/", self.register_new_user),
+                #web.get("/", self.register_new_user, ),
                 web.get("/controls/{player_id}", self.player_controls),
                 web.get("/move/{player_id}/{direction}", self.move_player),
                 web.get("/get_ticks/", self.ws_handler),
+                web.post("/timesync/", self.handle_timesync),
             ]
         )
  
@@ -204,7 +214,7 @@ class WebFrontend:
                   await ws.close()
                 else:
                   print(f"Message from client: {msg.data}")
-                  events.trigger(f"input.move_right.2", 1)
+                  events.trigger(f"input.move_right.1", 1)
             elif msg.type == web.WSMsgType.ERROR:
                 print(f"WebSocket connection closed with exception {ws.exception()}")
         finally:
@@ -225,9 +235,25 @@ class WebFrontend:
     async def player_controls(self, request):
         data = request.match_info["player_id"]
         return web.Response(
-            content_type="text/html", body=html_page.format(player_id=data, ticks=self.ticks)
+            content_type="text/html", body=html_page.format(player_id=data, ticks=self.ticks),
+            headers=CORS_HEADERS
         )
- 
+    async def handle_timesync(self, request):
+        
+        data = await request.json()
+        try: id = data['id']
+        except: id = "null"
+        #id=2
+        body=json.dumps({"jsonrpc": "2.0", "result": time.time()*1000, "id": f"{id}" })
+        #print(f"Timesync from {id}: {data}")
+        #print(f"rx: {data}, tx: {body}")
+        
+        return web.Response(
+            content_type="application/json", body=body,
+
+            headers=CORS_HEADERS
+        )
+    
     async def move_player(self, request):
         player_id = request.match_info["player_id"]
         action = request.match_info["direction"]
@@ -248,9 +274,10 @@ class WebFrontend:
 
     async def update(self, ticks):
         self.ticks = ticks
-        await self.broadcast(str(self.ticks))
+        await self.broadcast(json.dumps({"ticks": ticks, "endtime": self.endtime})  )
 
-duration = 30
+duration = 500
+
 async def main():
     window = pygame.display.set_mode((500, 500))
     web_server = WebFrontend()
@@ -262,10 +289,33 @@ async def main():
     local_player_id = local_player.player_id
     
     countdown_start = pygame.time.get_ticks()
+    web_server.endtime = (time.time() + duration) * 1000
+    print ("End time:", web_server.endtime)
     last_countdown = 0
+
+    print (decimal.getcontext())
+    decimal.getcontext().prec=5
+    decimal.getcontext().rounding=decimal.ROUND_CEILING
     
     clock = Clock()
     while True:
+        countdown = duration - int((pygame.time.get_ticks() - countdown_start)/1000)
+        #time_left = time.time() - countdown_end
+        #print (countdown, time_left)
+
+        ## web_server.endtime = (time.time() + duration) * 1000
+        ### int((((time.time() + duration) * 1000) - (time.time()*1000))*1000)/1000)
+        ### int((((time.time() + duration)) - (time.time())))
+
+        d_countdown = Decimal(f"{(web_server.endtime - (time.time()*1000))/1000:.2f}")
+        print (countdown, f"{d_countdown:.1f}")
+        if countdown >= 0: #elif True:#event.type == TIMEREVENT:
+              countdown = duration - int((pygame.time.get_ticks() - countdown_start)/1000)
+              if countdown != last_countdown:        
+                  
+                  await web_server.update(countdown)
+                  last_countdown = countdown
+                  
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return
@@ -289,13 +339,7 @@ async def main():
         
         #await web_server.update(pygame.time.get_ticks())
         
-        countdown = duration - int((pygame.time.get_ticks() - countdown_start)/1000)
 
-        if countdown >= 0: #elif True:#event.type == TIMEREVENT:
-              countdown = duration - int((pygame.time.get_ticks() - countdown_start)/1000)
-              if countdown != last_countdown:        
-                  await web_server.update(countdown)
-                  last_countdown = countdown
         await clock.tick(30)
  
  

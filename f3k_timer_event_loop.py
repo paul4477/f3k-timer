@@ -9,7 +9,7 @@ def run_round(round):
   Y=600
 
   screen = pygame.display.set_mode((X,Y), pygame.NOFRAME | pygame.RESIZABLE)
-  pygame.display.set_caption(f"{round}")
+  pygame.display.set_caption(f"Round: {round}")
   clock = pygame.time.Clock()
 
   TIMEREVENT = pygame.USEREVENT + 1
