@@ -7,6 +7,14 @@ import time
 import decimal
 Decimal = decimal.Decimal
 
+from ESPythoNOW import *
+
+def esp_callback(from_mac, to_mac, msg):
+  print("ESP-NOW message from %s to %s: %s" % (from_mac, to_mac, msg))
+
+espnow = ESPythoNow(interface="wlp113s0", accept_all=True, callback=esp_callback)
+espnow.start()
+
 # async version of pygame.time.Clock
 class Clock:
     def __init__(self, time_func=pygame.time.get_ticks):
