@@ -1,0 +1,21 @@
+[Unit]
+Description=Test Sound Service
+After=network.target sound.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /home/paul.robinson/f3k-timer/systemd-test/systemd-test.py
+WorkingDirectory=/home/paul.robinson/f3k-timer/systemd-test
+Restart=on-failure
+# Send SIGTERM on stop (default), and SIGUSR1 for our custom "play" command
+KillSignal=SIGTERM
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+
+User=paul.robinson
+Group=paul.robinson
+
+# Let systemd know we want to define extra actions
+ExecReload=/bin/kill -USR1 $MAINPID
+
+[Install]
+WantedBy=multi-user.target 
