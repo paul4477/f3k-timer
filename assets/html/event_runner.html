@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Event Selector</title>
+</head>
+<body onload="onBodyLoad()">
+
+<script>
+function onBodyLoad() {
+  const socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/');
+
+  socket.onopen = function(event) {
+    console.log('WebSocket connection opened:', event);
+  };
+
+  socket.onmessage = function(event) {
+    try {
+      const data = JSON.parse(event.data);
+      if (data && data.type) {
+        handleMessageByType(data.type, data);
+      } else {
+        console.warn('Received message without type:', data);
+      }
+    } catch (e) {
+      console.error('Failed to parse message:', event.data, e);
+    }
+  };
+
+  function handleMessageByType(type, data) {
+    switch (type) {
+      case 'exampleType1':
+        handleExampleType1(data);
+        break;
+      case 'exampleType2':
+        handleExampleType2(data);
+        break;
+      default:
+        console.warn('Unhandled message type:', type, data);
+    }
+  }
+
+  function handleExampleType1(data) {
+    console.log('Handling exampleType1:', data);
+  }
+
+  function handleExampleType2(data) {
+    console.log('Handling exampleType2:', data);
+  }
+}
+</script>
+
+</body>
+</html>
