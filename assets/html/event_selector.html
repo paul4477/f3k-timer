@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Event Selector</title>
+</head>
+<body onload="onBodyLoad()">
+
+<textarea id="wsTXMessage" rows="4" cols="50" placeholder="Enter message to send"></textarea><br>
+<button id="sendBtn">Send to WebSocket</button><br>
+<textarea id="wsRXMessage" rows="4" cols="50" placeholder=""></textarea><br>
+
+<button id="quitBtn">Quit</button>
+
+<script>
+let socket;
+
+function onBodyLoad() {
+  socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/');
+
+  socket.onopen = function(event) {
+    console.log('WebSocket connection opened:', event);
+  };
+
+  socket.onmessage = function(event) {
+    try {
+      const data = JSON.parse(event.data);
+      if (data && data.type) {
+        handleMessageByType(data.type, data);
+      } else {
+        console.warn('Received message without type:', data);
+      }
+    } catch (e) {
+      console.error('Failed to parse message:', event.data, e);
+    }
+  };
+
+  function handleMessageByType(type, data) {
+    switch (type) {
+      case 'time':
+        handleTime(data);
+        break;
+      case 'exampleType2':
+        handleExampleType2(data);
+        break;
+      default:
+        console.warn('Unhandled message type:', type, data);
+    }
+  }
+
+  function handleTime(data) {
+    //console.log('Handling Time:', data);
+    document.getElementById('wsRXMessage').value = JSON.stringify(data);
+  }
+
+  function handleExampleType2(data) {
+    console.log('Handling exampleType2:', data);
+    
+  }
+
+  // Button click handler
+  document.getElementById('sendBtn').onclick = function() {
+    const msg = document.getElementById('wsTXMessage').value;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(msg);
+    } else {
+      alert('WebSocket is not connected.');
+    }
+  };
+
+  // Quit button click handler
+  document.getElementById('quitBtn').onclick = function() {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send('{"command":"quit"}');
+    } else {
+      alert('WebSocket is not connected.');
+    }
+  };
+}
+</script>
+
+</body>
+</html>
