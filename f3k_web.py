@@ -26,19 +26,29 @@ class WebFrontend:
             [
                 web.get("/", self.handle_default_page),
                 web.get("/run", self.handle_run_page),
+                web.get("/reset", self.handle_reset),
                 web.post("/timesync/", self.handle_timesync),
                 web.get("/ws/", self.ws_handler),
                 web.post("/load_event", self.handle_load_event),
                 
             ]
         )
+    async def handle_reset(self, request):
+        # Serve the static HTML file
+        self.logger.debug(f"Resetting event data, {self.event_data_loaded}")
+        if self.event_data_loaded: self.event_data_loaded = False
+        self.events.trigger(f"player.stop")
+        
+        raise web.HTTPFound('/')
+        
 
     async def handle_default_page(self, request):
+        self.logger.debug(f"Serving default, {self.event_data_loaded}")
         # Serve the static HTML file
         if self.event_data_loaded:
             file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
         else:
-            file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "api_test.html")
+            file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_selector.html")
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
@@ -47,15 +57,17 @@ class WebFrontend:
             return web.Response(status=404, text="Default page not found")
 
     async def handle_run_page(self, request):
-        # Serve the static HTML file
-        file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                content = f.read()
-            return web.Response(text=content, content_type="text/html")
-        except FileNotFoundError:
-            return web.Response(status=404, text="Run page not found")
-
+        self.logger.debug(f"Serving run, {self.event_data_loaded}")
+        if self.event_data_loaded:# Serve the static HTML file
+            file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                return web.Response(text=content, content_type="text/html")
+            except FileNotFoundError:
+                return web.Response(status=404, text="Run page not found")
+        else:
+            raise web.HTTPFound('/')
 
     # json reponse for time sync requests from web clients
     async def handle_timesync(self, request):
@@ -150,7 +162,7 @@ class WebFrontend:
     async def startup(self):
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
-        site = web.TCPSite(self.runner, "0.0.0.0", 8080)
+        site = web.TCPSite(self.runner, "0.0.0.0", 80)
         await site.start()
  
     async def shutdown(self):
@@ -166,5 +178,6 @@ class WebFrontend:
             d = state.get_dict()
             msg = json.dumps(d | {"type": "time"} )
             for ws in list(self.clients):
+                #self.logger.debug(f"Sending to client: {msg}")
                 await ws.send_str(msg)
             
