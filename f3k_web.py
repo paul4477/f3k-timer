@@ -19,27 +19,43 @@ class WebFrontend:
         self.ticks = 0
         self.clients = set()
         self.events = events
+        self.event_data_loaded = False
         self.logger = logging.getLogger(self.__class__.__name__)
-        # set html/event_selector.html as the default route
-
         # Add route for default page
         self.app.add_routes(
             [
                 web.get("/", self.handle_default_page),
+                web.get("/run", self.handle_run_page),
                 web.post("/timesync/", self.handle_timesync),
                 web.get("/ws/", self.ws_handler),
+                web.post("/load_event", self.handle_load_event),
+                
             ]
         )
 
     async def handle_default_page(self, request):
         # Serve the static HTML file
-        file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_selector.html")
+        if self.event_data_loaded:
+            file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
+        else:
+            file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "api_test.html")
         try:
             with open(file_path, "r", encoding="utf-8") as f:
                 content = f.read()
             return web.Response(text=content, content_type="text/html")
         except FileNotFoundError:
             return web.Response(status=404, text="Default page not found")
+
+    async def handle_run_page(self, request):
+        # Serve the static HTML file
+        file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                content = f.read()
+            return web.Response(text=content, content_type="text/html")
+        except FileNotFoundError:
+            return web.Response(status=404, text="Run page not found")
+
 
     # json reponse for time sync requests from web clients
     async def handle_timesync(self, request):
@@ -50,7 +66,26 @@ class WebFrontend:
         return web.Response(
             content_type="application/json", body=body,
         )
+
+    # json reponse for time sync requests from web clients
+    async def handle_load_event(self, request):
+        self.logger.debug("in handle_load_event")
+        data = await request.json()
+        self.logger.debug(f"Length of data received: {len(data)}")
+        for k in data.keys():
+            self.logger.debug(f"  {k}: {data[k]}")
+        try:
             
+            self.logger.info(f"Handling load_event {data['event']['event_id']}:{data['event']['event_name']}")
+            self.events.trigger(f"player.data_available", data)
+            self.event_data_loaded = True  
+            ## Do some stuff with the data 
+        except KeyError:
+            return web.Response(status=400, text="Missing 'event' in request")
+        else:
+            #return web.Response(status=200, text=f"Event load requested")
+            raise web.HTTPFound('/run')
+
     ## Handle control commands from web client(s) - pause, skip, reset etc
     async def ws_handler(self, request):
         self.logger.debug("in ws_handler")
@@ -124,6 +159,12 @@ class WebFrontend:
 
     async def update(self, state):
         # Send the bits of state needed to the web clients
-        msg = json.dumps({"type": "time", "T": state.slot_time, "E": state.end_time, "R": state.round.number, "G": state.round.group_number, "N": state.is_no_fly()})
-        for ws in list(self.clients):
-            await ws.send_str(msg)
+        if True:#state and state.round:
+            #msg = json.dumps({"type": "time", "T": state.slot_time, "E": state.end_time, "R": state.round.round_number, "G": state.round.group_number, "N": state.is_no_fly()})
+            
+            
+            d = state.get_dict()
+            msg = json.dumps(d | {"type": "time"} )
+            for ws in list(self.clients):
+                await ws.send_str(msg)
+            
