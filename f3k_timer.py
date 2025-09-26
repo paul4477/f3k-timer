@@ -6,6 +6,7 @@ import json
 import time
 import decimal
 import logging
+import math
 Decimal = decimal.Decimal
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k_timer.log')
@@ -144,8 +145,9 @@ class Player:
             self.logger.info(f"Set initial state to round {self.state.round}")
 
     async def start(self):
-        self.started = True
-        self.state.start()
+        if not self.started:
+            self.started = True
+            self.state.start()
 
     async def pause(self):
         pass
@@ -167,15 +169,13 @@ class Player:
             pilots[int(pilot['pilot_id'])] = pilot['pilot_first_name'] + " " + pilot['pilot_last_name']
         return pilots
     async def update(self):
-        # calculate new times etc??
-        #self.state.end_time = time.time() + 600
-        #for player in self.players:
-        #    await player.update(window)
+        # calculate new state. 
 
         ### Fire play sound event on specific times
 
         now = time.time()
-        self.state.slot_time = max(0, int(self.state.end_time - now)) if self.state.end_time else 0
+        #self.logger.debug(f"Player update, now {now}, end_time {self.state.end_time}, slot_time {self.state.end_time - now}, started {self.started}")
+        self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
         if self.state.end_time and now >= self.state.end_time:
             self.state.end_time = None
             self.state.slot_time = 0
