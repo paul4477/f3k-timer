@@ -37,6 +37,7 @@ class WebFrontend:
         # Serve the static HTML file
         self.logger.debug(f"Resetting event data, {self.event_data_loaded}")
         if self.event_data_loaded: self.event_data_loaded = False
+        self.events.trigger(f"player.stop")
         
         raise web.HTTPFound('/')
         
@@ -177,5 +178,6 @@ class WebFrontend:
             d = state.get_dict()
             msg = json.dumps(d | {"type": "time"} )
             for ws in list(self.clients):
+                #self.logger.debug(f"Sending to client: {msg}")
                 await ws.send_str(msg)
             

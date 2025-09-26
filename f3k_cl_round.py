@@ -106,6 +106,55 @@ f3k_task_timing_data["f3k_n"] = {
             'windowTime': 600
 }
 
+#Group class returns iterator/generator for sections (prep, no-fly, work, land, gap)
+# pass event.config in so that group can calculate section times
+# the group needs to know what round it is part of to get round specific times
+# Round class contains list of groups
+
+class Group:
+    """
+    Represents a group within a round. Can generate its timing sections (prep, no-fly, work, land, gap).
+    """
+    def __init__(self, group_number, round_obj, event_config=None):
+        self.group_number = group_number
+        self.round = round_obj  # Reference to parent Round
+        self.event_config = event_config or {}
+        # Example: self.sections = list(self.sections_iter())
+
+    def sections_iter(self):
+        """
+        Generator yielding timing sections for this group.
+        Each yield is a tuple: (section_name, duration_seconds)
+        """
+        # Example timings, can be customized via event_config or round/task type
+        prep_time = self.event_config.get('prep_time', 60)  # seconds
+        no_fly_time = self.event_config.get('no_fly_time', 0)
+        work_time = getattr(self.round, 'windowTime', 600)
+        land_time = self.event_config.get('land_time', 30)
+        gap_time = self.event_config.get('gap_time', 0)
+
+        if prep_time > 0:
+            yield ('prep', prep_time)
+        if no_fly_time > 0:
+            yield ('no-fly', no_fly_time)
+        if work_time > 0:
+            yield ('work', work_time)
+        if land_time > 0:
+            yield ('land', land_time)
+        if gap_time > 0:
+            yield ('gap', gap_time)
+
+    def __iter__(self):
+        return self.sections_iter()
+
+    def __repr__(self):
+        return f"Group {self.group_number} of {self.round}"
+
+# Example usage:
+# round_obj = Round('f3k_a', 'A', 1)
+# group = Group(1, round_obj, event_config={'prep_time': 60, 'no_fly_time': 30})
+# for section, duration in group:
+#     print(section, duration)
 
 class Round():
   def __init__(self, short_code, short_name, round_number):

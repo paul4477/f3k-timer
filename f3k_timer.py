@@ -18,6 +18,8 @@ class Clock:
     def __init__(self, time_func=pygame.time.get_ticks):
         self.time_func = time_func
         self.last_tick = time_func() or 0
+        self.next_tick = None
+        self.logger = logging.getLogger(self.__class__.__name__)    
  
     async def get_fps(self):
         delta = self.time_func() - self.last_tick
@@ -26,18 +28,23 @@ class Clock:
         return 1000.0 / delta
     
     async def tick(self, fps=0):
-        if 0 >= fps:
+        if fps <= 0:
             return
- 
-        end_time = (1.0 / fps) * 1000
-        current = self.time_func()
-        time_diff = current - self.last_tick
-        delay = (end_time - time_diff) / 1000
- 
-        self.last_tick = current
+
+        frame_duration = (1.0 / fps) * 1000  # ms per frame
+        now = self.time_func()
+        next_tick = getattr(self, "next_tick", None)
+        if next_tick is None:
+            next_tick = now + frame_duration
+        else:
+            next_tick += frame_duration
+
+        delay = (next_tick - now) / 1000
         if delay < 0:
             delay = 0
- 
+
+        self.next_tick = next_tick
+        
         await asyncio.sleep(delay)
  
  
@@ -86,8 +93,10 @@ class State:
 
     def start(self):
         if self.round:
-            self.slot_time = self.round.windowTime
+            self.slot_time = 62##self.round.windowTime
             self.end_time = time.time() + self.slot_time
+        else:
+            logger.warning("No round set, cannot start")
 
     def is_no_fly(self):
         # Determine if current time is within no-fly period
@@ -100,14 +109,16 @@ class State:
     
 class Player:
 
-    def __init__(self):
+    def __init__(self, events):
         self.rounds = []
         self.state = State()
+        self.events = events
         self.register_handlers()
-        self.mixer = pygame.mixer.Channel(0)
+        #self.mixer = pygame.mixer
         self.running = True
         self.started = False
         self.raw_json = None
+        self.last_announced = -1
         self.logger = logging.getLogger(self.__class__.__name__)
         self.pilots = {}
 
@@ -116,16 +127,17 @@ class Player:
         return self.running
     
     def register_handlers(self):
-        events.on("player.data_available")(self.load_data)
+        self.events.on("player.data_available")(self.load_data)
         # handlers for control commands from web client(s)
-        events.on("player.start")(self.start)
-        events.on("player.pause")(self.pause)
-        events.on("player.skip_fwd")(self.skip_fwd)
-        events.on("player.skip_back")(self.skip_back)   
-        events.on("player.skip_previous")(self.skip_previous)
-        events.on("player.skip_next")(self.skip_next)
-        events.on("player.goto")(self.goto)
-        events.on("player.quit")(self.quit)
+        self.events.on("player.start")(self.start)
+        self.events.on("player.pause")(self.pause)
+        self.events.on("player.skip_fwd")(self.skip_fwd)
+        self.events.on("player.skip_back")(self.skip_back)   
+        self.events.on("player.skip_previous")(self.skip_previous)
+        self.events.on("player.skip_next")(self.skip_next)
+        self.events.on("player.goto")(self.goto)
+        self.events.on("player.stop")(self.stop)
+        self.events.on("player.quit")(self.quit)
         
     async def load_data(self, raw_json):
         
@@ -138,16 +150,19 @@ class Player:
         self.logger.info(f"Loaded {len(self.pilots)} pilots from event data")
         self.logger.debug(f"Pilots: {self.pilots}")
         
-        if True:#len(self.rounds) > 0:
+        if len(self.rounds) > 0:
             self.state.round = self.rounds[0]
             self.state.slot_time = self.state.round.windowTime
             self.state.end_time = None #time.time() + self.state.round.windowTime
-            self.logger.info(f"Set initial state to round {self.state.round}")
+            self.logger.info(f"Set initial state to round {self.state.round}, window: {self.state.round.windowTime}s")
 
     async def start(self):
+        
         if not self.started:
             self.started = True
             self.state.start()
+            
+            #self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
 
     async def pause(self):
         pass
@@ -163,19 +178,33 @@ class Player:
         pass
     async def quit(self):
         self.running = False
+    async def stop(self):
+        self.logger.info("Stopping player")
+        self.started = False        
+        self.state = State()
     def _set_pilots(self, raw_json):
         pilots = {}
         for pilot in raw_json['event']['pilots']:
             pilots[int(pilot['pilot_id'])] = pilot['pilot_first_name'] + " " + pilot['pilot_last_name']
         return pilots
     async def update(self):
+        
         # calculate new state. 
 
         ### Fire play sound event on specific times
 
         now = time.time()
+        #self.state.update_now(time.time())
+        #if self.state.has_ended():
+            #self.state.sections
+
+
         #self.logger.debug(f"Player update, now {now}, end_time {self.state.end_time}, slot_time {self.state.end_time - now}, started {self.started}")
-        self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
+        if self.started: 
+            self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
+            if self.last_announced != self.state.slot_time:
+                self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
+                self.last_announced = self.state.slot_time
         if self.state.end_time and now >= self.state.end_time:
             self.state.end_time = None
             self.state.slot_time = 0
@@ -184,13 +213,14 @@ class Player:
             self.logger.info(f"End of round {self.state.round.round_number} window")
 
 import f3k_web
+import f3k_sounds
 
 async def main():
     
     web_server = f3k_web.WebFrontend(events)
     await web_server.startup()
- 
-    player = Player()
+    audio_player = f3k_sounds.AudioPlayer(events)
+    player = Player(events)
     
     #data = json.load(open('test_data.json'))
     #import f3k_cl_round
@@ -213,13 +243,15 @@ async def main():
 
         await player.update()
         #await announcer.update(player.state) # instead have this triggered by events from player?
+        #logger.debug(f"web_server.update")
         await web_server.update(player.state)
         ## Pass state to all plugins to allow them to update
+        ## Or use events triggered from player.update() to notify plugins of changes (on each whole second for example)
         #for plugin in plugins:
         #    await plugin.update(player.state)
 
         # limit to x fps
-        await clock.tick(4)
+        await clock.tick(2)
  
  
 if __name__ == "__main__":
