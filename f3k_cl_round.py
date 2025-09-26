@@ -106,6 +106,8 @@ f3k_task_timing_data["f3k_n"] = {
             'windowTime': 600
 }
 
+import logging
+
 #Group class returns iterator/generator for sections (prep, no-fly, work, land, gap)
 # pass event.config in so that group can calculate section times
 # the group needs to know what round it is part of to get round specific times
@@ -115,11 +117,13 @@ class Group:
     """
     Represents a group within a round. Can generate its timing sections (prep, no-fly, work, land, gap).
     """
-    def __init__(self, group_number, round_obj, event_config=None):
+    def __init__(self, group_number, round_obj, pilot_list, event_config=None):
         self.group_number = group_number
         self.round = round_obj  # Reference to parent Round
+        self.pilots = pilot_list  # List of pilot IDs in this group
         self.event_config = event_config or {}
         # Example: self.sections = list(self.sections_iter())
+        self.logger = logging.getLogger(self.__class__.__name__)
 
     def sections_iter(self):
         """
@@ -127,11 +131,16 @@ class Group:
         Each yield is a tuple: (section_name, duration_seconds)
         """
         # Example timings, can be customized via event_config or round/task type
-        prep_time = self.event_config.get('prep_time', 60)  # seconds
-        no_fly_time = self.event_config.get('no_fly_time', 0)
+        prep_time = self.event_config.get('prep_time', 10)#300  # seconds
+        test_time = self.event_config.get('test_time', 0)  # seconds
+        no_fly_time = self.event_config.get('no_fly_time', 6) #60
         work_time = getattr(self.round, 'windowTime', 600)
-        land_time = self.event_config.get('land_time', 30)
-        gap_time = self.event_config.get('gap_time', 0)
+        land_time = self.event_config.get('land_time', 5) #30
+        gap_time = self.event_config.get('gap_time', 2) #2
+
+
+        ## Add special case for F3K Task C (All Up Last Down)
+        
 
         if prep_time > 0:
             yield ('prep', prep_time)
@@ -141,6 +150,19 @@ class Group:
             yield ('work', work_time)
         if land_time > 0:
             yield ('land', land_time)
+        if self.round.short_code.startswith('f3k_c'):
+            if no_fly_time > 0:
+                yield ('no-fly', no_fly_time)
+            if work_time > 0:
+                yield ('work', work_time)
+            if land_time > 0:
+                yield ('land', land_time)            
+            if no_fly_time > 0:
+                yield ('no-fly', no_fly_time)
+            if work_time > 0:
+                yield ('work', work_time)
+            if land_time > 0:
+                yield ('land', land_time)                
         if gap_time > 0:
             yield ('gap', gap_time)
 
@@ -148,7 +170,8 @@ class Group:
         return self.sections_iter()
 
     def __repr__(self):
-        return f"Group {self.group_number} of {self.round}"
+        return f"Group {self.group_number:2d} of Round {self.round.round_number:2d}"
+
 
 # Example usage:
 # round_obj = Round('f3k_a', 'A', 1)
@@ -157,24 +180,53 @@ class Group:
 #     print(section, duration)
 
 class Round():
-  def __init__(self, short_code, short_name, round_number):
-      self.short_code = short_code
-      self.round_number = round_number
-      self.short_name = short_name
-      self.task_name = f3k_task_timing_data[self.short_code]['name']
-      self.task_description = f3k_task_timing_data[self.short_code]['description']
-      self.windowTime = f3k_task_timing_data[self.short_code]['windowTime']
-      self.groups = []
+    def __init__(self, short_code, short_name, round_number):
+        self.short_code = short_code
+        self.round_number = round_number
+        self.short_name = short_name
+        self.task_name = f3k_task_timing_data[self.short_code]['name']
+        self.task_description = f3k_task_timing_data[self.short_code]['description']
+        self.windowTime = f3k_task_timing_data[self.short_code]['windowTime'] /10 
+        self.groups = []
+        self.logger = logging.getLogger(self.__class__.__name__)
 
-  def __repr__(self):
-     return f"Round {self.round_number:2d} {self.short_name}, {int(self.windowTime/60):2d}mins"
+    def __repr__(self):
+        return f"Round {self.round_number:2d} {self.short_name}, {int(self.windowTime/60):2d}mins"
 
+    def populate_groups(self, standings):
+        groups = {}
+        letters= "-ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Adding '-' so index matches group number
+        #print (self.round_number)
+        for pilot in standings:
+            pilot_id = pilot['pilot_id']
+            
+            # prelim_standings.standings[pilot.rounds[round.flights[flight_group]]]
+            if len(pilot['rounds']) >= 0:
+                # Only look at this round
+                try: round_data = pilot['rounds'][self.round_number - 1]
+                except IndexError:
+                    self.logger.error(f"Pilot {pilot_id} has no data for round {self.round_number}")
+                    continue
+                assert round_data['round_number'] == self.round_number
+                for flight in round_data['flights']:
+                    if flight['flight_group'] not in groups:
+                        groups[flight['flight_group']] = []
+                    groups[flight['flight_group']].append(pilot_id)
+        for group_letter in sorted(groups): 
+            group_number = letters.index(group_letter)
+            self.groups.append( Group(group_number, self, groups[group_letter]) )
+
+    def __iter__(self):
+        return (group for group in self.groups)
 
 def make_rounds(json_data):
   round_data = []
   for round in json_data['event']['tasks']:
-    round_data.append( Round(
+    r = Round(
        round['flight_type_code'], 
        round['flight_type_name_short'], 
-       round['round_number'],))
+       round['round_number'],)
+    r.populate_groups(json_data['event']['prelim_standings']['standings'])
+    round_data.append( r )
+    ###draw[pilot.pilot_id][task.round_number] = pilot.rounds[parseInt(task.round_number) - 1].flights[0].flight_group
   return round_data   

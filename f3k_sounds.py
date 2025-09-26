@@ -2,7 +2,7 @@ import pygame
 import logging
 import asyncio
 
-pygame.mixer.init(frequency=44100, size=-16,channels=1)
+pygame.mixer.init(frequency=44100, size=-16, channels=1)
 
 pygame.mixer.music.load('assets/sounds/countdown.mp3')
 
@@ -90,8 +90,8 @@ class AudioPlayer:
         #events.on("player.quit")(self.quit)
 
     async def play_minutes_and_seconds(self, seconds):
-              ## Play sounds
-      self.logger.debug(f"AudioPlayer: play_minutes_and_seconds({seconds}, mod 15: {seconds%15} )")
+      ## Play sounds
+      #self.logger.debug(f"AudioPlayer: play_minutes_and_seconds({seconds}, mod 15: {seconds%15} )")
 
       if seconds % 15 == 0 and seconds > 60:
         match (seconds%60):
