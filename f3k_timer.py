@@ -7,6 +7,7 @@ import time
 import decimal
 import logging
 import math
+from collections import deque
 Decimal = decimal.Decimal
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k_timer.log')
@@ -20,13 +21,12 @@ class Clock:
         self.last_tick = time_func() or 0
         self.next_tick = None
         self.logger = logging.getLogger(self.__class__.__name__)    
- 
+        self.recent_delays = deque([0]*100)
+        
     async def get_fps(self):
-        delta = self.time_func() - self.last_tick
-        if delta == 0:
-            return 0.0  # or float('inf') if you prefer
-        return 1000.0 / delta
-    
+
+        return 1 / (sum(self.recent_delays) / len(self.recent_delays))
+ 
     async def tick(self, fps=0):
         if fps <= 0:
             return
@@ -43,9 +43,11 @@ class Clock:
         if delay < 0:
             delay = 0
 
-        self.next_tick = next_tick
-        
+        self.recent_delays.pop()
+        self.recent_delays.appendleft(delay)
         await asyncio.sleep(delay)
+        self.next_tick = next_tick
+        self.last_tick = next_tick
  
  
 class EventEngine:
@@ -93,7 +95,7 @@ class State:
 
     def start(self):
         if self.round:
-            self.slot_time = 62##self.round.windowTime
+            self.slot_time = self.round.windowTime
             self.end_time = time.time() + self.slot_time
         else:
             logger.warning("No round set, cannot start")
@@ -174,8 +176,14 @@ class Player:
         pass
     async def skip_next(self):
         pass
-    async def goto(self, round, group):
-        pass
+    async def goto(self, round=1, group=1):
+        await self.stop()
+        try: 
+            self.state.round = self.rounds[round-1]
+            self.state.slot_time = self.state.round.windowTime
+            self.state.end_time = None
+        except IndexError:
+            self.logger.error(f"Invalid round in goto: {round}")
     async def quit(self):
         self.running = False
     async def stop(self):
@@ -228,7 +236,7 @@ async def main():
 
     clock = Clock()
     TIMEREVENT = pygame.event.custom_type()
-    pygame.time.set_timer(TIMEREVENT, 15000) 
+    pygame.time.set_timer(TIMEREVENT, 1000) 
     
     while player.is_running():
                        
@@ -251,7 +259,7 @@ async def main():
         #    await plugin.update(player.state)
 
         # limit to x fps
-        await clock.tick(2)
+        await clock.tick(24)
  
  
 if __name__ == "__main__":

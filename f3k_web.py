@@ -21,6 +21,7 @@ class WebFrontend:
         self.events = events
         self.event_data_loaded = False
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.last_update = 0
         # Add route for default page
         self.app.add_routes(
             [
@@ -142,7 +143,12 @@ class WebFrontend:
                           self.events.trigger(f"player.skip_next")
                       case "goto":
                           self.logger.info("Received goto command")
-                          self.events.trigger(f"player.goto", data.get("round", 0), data.get("group", 0))
+                          try:
+                              r = int(data.get("round", 0))
+                              g = int(data.get("group", 0))
+                          except ValueError:
+                              self.logger.error(f"Bad data for goto: round: {data.get('round', 0)}, group: {data.get('group',0)}")
+                          self.events.trigger(f"player.goto", r, g)
                       case "quit":
                           self.logger.info("Received quit command")
                           self.events.trigger(f"player.quit")
@@ -162,16 +168,25 @@ class WebFrontend:
     async def startup(self):
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
-        site = web.TCPSite(self.runner, "0.0.0.0", 80)
+        site = web.TCPSite(self.runner, "0.0.0.0", 8080)
         await site.start()
  
     async def shutdown(self):
         if self.runner:
             await self.runner.cleanup()
+    def limit_rate(self):
+        ## Check how recently we've been called
+        ## Reduce rate of updates to max 6 per second
+        now = time.time()
+        if (now - self.last_update) >= 1/6:
+            self.last_update = now
+            return False
+        else:
+            return True
 
     async def update(self, state):
         # Send the bits of state needed to the web clients
-        if True:#state and state.round:
+        if (not self.limit_rate()) and state and state.round:
             #msg = json.dumps({"type": "time", "T": state.slot_time, "E": state.end_time, "R": state.round.round_number, "G": state.round.group_number, "N": state.is_no_fly()})
             
             
@@ -179,5 +194,8 @@ class WebFrontend:
             msg = json.dumps(d | {"type": "time"} )
             for ws in list(self.clients):
                 #self.logger.debug(f"Sending to client: {msg}")
-                await ws.send_str(msg)
+                try: 
+                    await ws.send_str(msg)
+                except: #ConnectionResetError ??
+                    pass
             
