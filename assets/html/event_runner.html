@@ -1,14 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Event Selector</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+  <title>Event Search</title>
+  <style>
+    /* small UX nicety */
+    #event-list li { cursor: pointer; }
+  </style>
 </head>
 <body onload="onBodyLoad()">
 
+<textarea id="wsTXMessage" rows="4" cols="50" placeholder="Enter message to send"></textarea><br>
+<button id="sendBtn">Send to WebSocket</button><br>
+<textarea id="wsRXMessage" rows="4" cols="50" placeholder=""></textarea><br>
+
+<button id="quitBtn">Quit</button>
+<button id="startBtn">Start</button>
+
 <script>
+let socket;
+
 function onBodyLoad() {
-  const socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/');
+  socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/');
 
   socket.onopen = function(event) {
     console.log('WebSocket connection opened:', event);
@@ -29,8 +46,8 @@ function onBodyLoad() {
 
   function handleMessageByType(type, data) {
     switch (type) {
-      case 'exampleType1':
-        handleExampleType1(data);
+      case 'time':
+        handleTime(data);
         break;
       case 'exampleType2':
         handleExampleType2(data);
@@ -40,13 +57,42 @@ function onBodyLoad() {
     }
   }
 
-  function handleExampleType1(data) {
-    console.log('Handling exampleType1:', data);
+  function handleTime(data) {
+    //console.log('Handling Time:', data);
+    document.getElementById('wsRXMessage').value = JSON.stringify(data);
   }
 
   function handleExampleType2(data) {
     console.log('Handling exampleType2:', data);
+    
   }
+
+  // Button click handler
+  document.getElementById('sendBtn').onclick = function() {
+    const msg = document.getElementById('wsTXMessage').value;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(msg);
+    } else {
+      alert('WebSocket is not connected.');
+    }
+  };
+
+  // Quit button click handler
+  document.getElementById('quitBtn').onclick = function() {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send('{"command":"quit"}');
+    } else {
+      alert('WebSocket is not connected.');
+    }
+  };
+    // Quit button click handler
+  document.getElementById('startBtn').onclick = function() {
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send('{"command":"start"}');
+    } else {
+      alert('WebSocket is not connected.');
+    }
+  };
 }
 </script>
 

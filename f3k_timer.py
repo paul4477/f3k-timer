@@ -74,25 +74,28 @@ class EventEngine:
  
             # schedule all listeners to run
             return await asyncio.gather(*handlers)
- 
- 
+  
 events = EventEngine()
 
-class Round:
-    def __init__(self, number, group_number, windowTime, noFlyTime):
-        self.number = number
-        self.group_number = group_number
-        self.windowTime = windowTime  # in milliseconds
-        self.noFlyTime = noFlyTime    # in milliseconds
 class State:
     def __init__(self):
-        self.round = Round(1,1, 300000, 60000) # default round 1, group 1, 5min window, 1min no-fly
+        self.round = None #Round(1, 1, 300000, 60000) # default round 1, group 1, 5min window, 1min no-fly
         self.slot_time = 0
         self.end_time = 0
+
+    def start(self):
+        if self.round:
+            self.slot_time = self.round.windowTime
+            self.end_time = time.time() + self.slot_time
 
     def is_no_fly(self):
         # Determine if current time is within no-fly period
         return False
+    def get_dict(self):
+        if self.round:
+            return {'round': self.round.round_number, 'slot_time': self.slot_time, 'end_time': self.end_time, 'no-fly': self.is_no_fly()}
+        else:
+            return {'round': '', 'slot_time': self.slot_time, 'end_time': self.end_time, 'no-fly': self.is_no_fly()}
     
 class Player:
 
@@ -102,9 +105,17 @@ class Player:
         self.register_handlers()
         self.mixer = pygame.mixer.Channel(0)
         self.running = True
+        self.started = False
+        self.raw_json = None
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.pilots = {}
 
- 
+    def is_running(self):
+        # or more complex check that queries list of rounds and state object
+        return self.running
+    
     def register_handlers(self):
+        events.on("player.data_available")(self.load_data)
         # handlers for control commands from web client(s)
         events.on("player.start")(self.start)
         events.on("player.pause")(self.pause)
@@ -115,8 +126,27 @@ class Player:
         events.on("player.goto")(self.goto)
         events.on("player.quit")(self.quit)
         
+    async def load_data(self, raw_json):
+        
+        self.raw_json = raw_json
+        import f3k_cl_round
+        self.rounds = f3k_cl_round.make_rounds(raw_json)
+        self.logger.info(f"Loaded {len(self.rounds)} rounds from event data")
+
+        self.pilots = self._set_pilots(raw_json)
+        self.logger.info(f"Loaded {len(self.pilots)} pilots from event data")
+        self.logger.debug(f"Pilots: {self.pilots}")
+        
+        if True:#len(self.rounds) > 0:
+            self.state.round = self.rounds[0]
+            self.state.slot_time = self.state.round.windowTime
+            self.state.end_time = None #time.time() + self.state.round.windowTime
+            self.logger.info(f"Set initial state to round {self.state.round}")
+
     async def start(self):
-        pass
+        self.started = True
+        self.state.start()
+
     async def pause(self):
         pass
     async def skip_fwd(self, seconds):
@@ -131,28 +161,46 @@ class Player:
         pass
     async def quit(self):
         self.running = False
+    def _set_pilots(self, raw_json):
+        pilots = {}
+        for pilot in raw_json['event']['pilots']:
+            pilots[int(pilot['pilot_id'])] = pilot['pilot_first_name'] + " " + pilot['pilot_last_name']
+        return pilots
     async def update(self):
         # calculate new times etc??
-        self.state.end_time = time.time() + 600
+        #self.state.end_time = time.time() + 600
         #for player in self.players:
         #    await player.update(window)
- 
+
+        ### Fire play sound event on specific times
+
+        now = time.time()
+        self.state.slot_time = max(0, int(self.state.end_time - now)) if self.state.end_time else 0
+        if self.state.end_time and now >= self.state.end_time:
+            self.state.end_time = None
+            self.state.slot_time = 0
+            self.started = False
+            #self.mixer.play(pygame.mixer.Sound('sounds/horn.wav'))
+            self.logger.info(f"End of round {self.state.round.round_number} window")
 
 import f3k_web
 
 async def main():
     
-    
     web_server = f3k_web.WebFrontend(events)
     await web_server.startup()
  
     player = Player()
-   
+    
+    #data = json.load(open('test_data.json'))
+    #import f3k_cl_round
+    #player.rounds = f3k_cl_round.make_rounds(data)
+
     clock = Clock()
     TIMEREVENT = pygame.event.custom_type()
     pygame.time.set_timer(TIMEREVENT, 15000) 
     
-    while player.running:
+    while player.is_running():
                        
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
