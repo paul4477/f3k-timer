@@ -352,11 +352,12 @@ class Player:
         if self.started and self.state.end_time: 
             self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
             self.state.time_str = f"{int(self.state.slot_time/60):02d}:{self.state.slot_time%60:02d}"
-
+            self.events.trigger(f"espnow.tick", self.state)
             if self.last_announced != self.state.slot_time:
                 self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
                 self.last_announced = self.state.slot_time
                 self.events.trigger(f"pandora.second", self.state)
+                self.events.trigger(f"espnow.second", self.state)
                 #self.logger.debug(f"{self.state}")
         
         if self.started and self.state.end_time and now >= self.state.end_time: # current slot/section has ended
@@ -382,13 +383,16 @@ class Player:
 import f3k_web
 import f3k_sounds
 import plugin_pandora
+import plugin_espnow
 
 async def main():
     
     web_server = f3k_web.WebFrontend(events)
     await web_server.startup()
     audio_player = f3k_sounds.AudioPlayer(events)
+    ## Initialise them here, but they are then controlled by events rather than directly
     pandora = plugin_pandora.Pandora(events)
+    espnow = plugin_espnow.ESPNow(events)
     player = Player(events)
     
     #data = json.load(open('test_data.json'))
