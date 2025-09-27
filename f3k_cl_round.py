@@ -132,7 +132,7 @@ class Group:
         """
         # Example timings, can be customized via event_config or round/task type
         prep_time = self.event_config.get('prep_time', 10)#300  # seconds
-        test_time = self.event_config.get('test_time', 0)  # seconds
+        test_time = self.event_config.get('test_time', 0)  # 45 seconds
         no_fly_time = self.event_config.get('no_fly_time', 6) #60
         work_time = getattr(self.round, 'windowTime', 600)
         land_time = self.event_config.get('land_time', 5) #30
@@ -144,6 +144,8 @@ class Group:
 
         if prep_time > 0:
             yield ('prep', prep_time)
+        if test_time > 0:
+            yield ('test', test_time)
         if no_fly_time > 0:
             yield ('no-fly', no_fly_time)
         if work_time > 0:

@@ -191,6 +191,7 @@ class WebFrontend:
             
             
             d = state.get_dict()
+            #self.logger.debug(f"Sending to client: {d}")
             msg = json.dumps(d | {"type": "time"} )
             for ws in list(self.clients):
                 #self.logger.debug(f"Sending to client: {msg}")

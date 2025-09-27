@@ -99,6 +99,8 @@ class State:
         self.round = None
         self.group = None
         self.section = None
+        self.section_length = 0
+        self.time_str = "--:--"
 
     def __repr__(self):
         return f"State(round={self.round}, group={self.group}, section={self.section}, slot_time={self.slot_time}, end_time={self.end_time}, no-fly={self.is_no_fly()})"
@@ -124,7 +126,8 @@ class State:
 
         self.iter_section = iter(self.group)
         try:
-            self.section, self.slot_time = next(self.iter_section)
+            self.section, self.section_length = next(self.iter_section)
+            self.slot_time = self.section_length
             logger.debug(f"START: Section: {self.section}")
         except StopIteration:
             ## End of group
@@ -132,10 +135,16 @@ class State:
             return
         
         self.end_time = time.time() + self.slot_time
+    def resume(self):
+        self.end_time = time.time() + self.slot_time
 
     def is_no_fly(self):
         # Determine if current time is within no-fly period
-        return False
+        #logger.debug(f"Is this NOFLY? {self.section}, no_fly(): {self.section in ['prep', 'work']}")
+        
+        return not (self.section in ['prep', 'work'])
+        #if self.section in ['prep', 'work']: return False
+        #else: return True
 
     def next_round(self):
         try:
@@ -167,7 +176,8 @@ class State:
 
     def next_section(self):
         try:
-            self.section, self.slot_time = next(self.iter_section)
+            self.section, self.section_length = next(self.iter_section)
+            self.slot_time = self.section_length
             self.end_time = time.time() + self.slot_time
             logger.debug(f"NEXT_SECTION: Section: {self.section}")
             return True
@@ -184,9 +194,25 @@ class State:
 
     def get_dict(self):
         if self.round:
-            return {'round': self.round.round_number, 'slot_time': self.slot_time, 'end_time': self.end_time, 'no-fly': self.is_no_fly()}
+            return {
+                    'slot_time': self.slot_time, 
+                    'end_time': self.end_time, 
+                    'no_fly': self.is_no_fly(),
+                    'time_str': self.time_str if (self.slot_time or self.slot_time == 0) else '--:--',
+                    'round_num': self.round.round_number if self.round else '-',
+                    'group_num': self.group.group_number if self.group else '-',
+                    'section': self.section if self.section else '----',
+                    'task_name': self.round.task_name if self.round else '--------',}
         else:
-            return {'round': '', 'slot_time': self.slot_time, 'end_time': self.end_time, 'no-fly': self.is_no_fly()}
+            return {
+                    'slot_time': 0, 
+                    'end_time': 0, 
+                    'no_fly': False,
+                    'time_str': self.time_str if (self.slot_time or self.slot_time == 0) else '--:--',
+                    'round_num': self.round.round_number if self.round else '-',
+                    'group_num': self.group.group_number if self.group else '-',
+                    'section': self.section if self.section else '----',
+                    'task_name': self.round.task_name if self.round else '--------',}
     
 class Player:
 
@@ -251,15 +277,30 @@ class Player:
             #self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
 
     async def pause(self):
-        pass
+        if self.started: self.started = False
+        else: 
+            self.started = True
+            self.state.resume()
     async def skip_fwd(self, seconds):
-        pass
+        if self.state.slot_time:
+            self.state.slot_time -= 10
+            self.state.end_time = time.time() + self.state.slot_time
     async def skip_back(self, seconds):
-        pass
+        ## Protect against exceeding original section length?
+        if self.state.slot_time:
+            self.state.slot_time = min(self.state.section_length, self.state.slot_time + 10)
+            self.state.end_time = time.time() + self.state.slot_time
     async def skip_previous(self):
         pass
     async def skip_next(self):
-        pass
+        if not self.state.next_section():
+            if not self.state.next_group():
+                if not self.state.next_round():
+                    ## End of event
+                    self.logger.info("End of event")
+                    self.running = True # keep program alive
+                    self.started = False
+
     async def goto(self, round=1, group=1):
         await self.stop()
         try: 
@@ -287,13 +328,14 @@ class Player:
         now = time.time()
         if self.started and self.state.end_time: 
             self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
+            self.state.time_str = f"{int(self.state.slot_time/60):02d}:{self.state.slot_time%60:02d}"
 
             if self.last_announced != self.state.slot_time:
                 self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
                 self.last_announced = self.state.slot_time
                 #self.logger.debug(f"{self.state}")
         
-        if self.state.end_time and now >= self.state.end_time: # current slot/section has ended
+        if self.started and self.state.end_time and now >= self.state.end_time: # current slot/section has ended
             self.logger.info(f"End of section {self.state.section} in group {self.state.group}")   
             self.last_announced = -1
             self.state.clear_section()
