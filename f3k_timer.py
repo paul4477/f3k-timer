@@ -342,6 +342,7 @@ class Player:
             if self.last_announced != self.state.slot_time:
                 self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
                 self.last_announced = self.state.slot_time
+                self.events.trigger(f"pandora.second", self.state)
                 #self.logger.debug(f"{self.state}")
         
         if self.started and self.state.end_time and now >= self.state.end_time: # current slot/section has ended
