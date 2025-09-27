@@ -192,10 +192,24 @@ class State:
         self.slot_time = 0
         self.end_time = 0
 
+    def get_section_code(self):
+        section_code = {'prep': "PT",
+                        'no-fly': "NF",
+                        'test': "TT",
+                        'work': "WT",
+                        'land': "LT",
+                        'gap': "ST",
+                        '': "ST",
+                        None: "ST",
+                        'daytime': 'DT'
+                        }
+        return section_code.get(self.section, "DT")
+
     def get_dict(self):
         ## Map section names to descriptions
         section_desc = {'prep': "Preparation Time",
                         'no-fly': "No Fly Time",
+                        'test': "Test Flying Time",
                         'work': "Working Time",
                         'land': "Landing Window",
                         'gap': "...waiting for next group...",

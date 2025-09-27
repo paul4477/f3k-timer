@@ -35,7 +35,7 @@ class Pandora():
         if self.port:
             r = state.round.round_number
             g = state.group.group_number
-            s = "WT"
+            s = state.get_section_code()
             d = state.round.short_name
             output = f"P|{r:02}"\
                     f"|{g:02}"\
