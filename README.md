@@ -1,8 +1,11 @@
 # A Python (pygame) based F3K Timer
 
 ```
-pip install requests
-pip install pygame
+pip install requests pygame aiohttp 
+# Make sure required sound device is visible
+cat /proc/asound/cards
+# Turn up master volume:
+amixer sset "Master" 65536
 
 f3k_timer.py [-h] [--prep-minutes PREP_MINUTES] [--group-separation-minutes GROUP_SEPARATION_MINUTES] eventid
 ```
