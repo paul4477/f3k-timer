@@ -8,6 +8,9 @@ cat /proc/asound/cards
 amixer sset "Master" 65536
 
 f3k_timer.py [-h] [--prep-minutes PREP_MINUTES] [--group-separation-minutes GROUP_SEPARATION_MINUTES] eventid
+
+## For ESPNow you may need nexmon to allow your wlan interface to enter monitor mode.
+https://pimylifeup.com/raspberry-pi-nexmon/
 ```
 
 Aim is to create a Python (pygame) based timer application that takes event information from F3XVault and constructs a playlist for live audio playback to run an F3K event.
