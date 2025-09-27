@@ -367,12 +367,14 @@ class Player:
 
 import f3k_web
 import f3k_sounds
+import plugin_pandora
 
 async def main():
     
     web_server = f3k_web.WebFrontend(events)
     await web_server.startup()
     audio_player = f3k_sounds.AudioPlayer(events)
+    pandora = plugin_pandora.Pandora(events)
     player = Player(events)
     
     #data = json.load(open('test_data.json'))
