@@ -23,9 +23,12 @@ class WebFrontend:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.last_update = 0
         # Add route for default page
+        
         self.app.add_routes(
             [
+                web.static("/assets/", os.path.join(os.path.dirname(__file__), "assets")),
                 web.get("/", self.handle_default_page),
+                
                 web.get("/run", self.handle_run_page),
                 web.get("/reset", self.handle_reset),
                 web.post("/timesync/", self.handle_timesync),

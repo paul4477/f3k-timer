@@ -193,6 +193,15 @@ class State:
         self.end_time = 0
 
     def get_dict(self):
+        ## Map section names to descriptions
+        section_desc = {'prep': "Preparation Time",
+                        'no-fly': "No Fly Time",
+                        'work': "Working Time",
+                        'land': "Landing Window",
+                        'gap': "...waiting for next group...",
+                        '': "--------",
+                        None: "--------"
+                        }
         if self.round:
             return {
                     'slot_time': self.slot_time, 
@@ -201,7 +210,7 @@ class State:
                     'time_str': self.time_str if (self.slot_time or self.slot_time == 0) else '--:--',
                     'round_num': self.round.round_number if self.round else '-',
                     'group_num': self.group.group_number if self.group else '-',
-                    'section': self.section if self.section else '----',
+                    'section': section_desc.get(self.section, self.section),# if self.section else '----',
                     'task_name': self.round.task_name if self.round else '--------',}
         else:
             return {

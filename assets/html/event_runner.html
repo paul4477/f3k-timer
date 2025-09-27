@@ -9,13 +9,14 @@
   <style>
     /* small UX nicety */
     #event-list li { cursor: pointer; }
+    @font-face { font-family: lcd; src: url(/assets/font/7segment.woff); } 
   </style>
 </head>
-<body class="font-monospace" onload="onBodyLoad()">
+<body class="font-monospace lh-sm" onload="onBodyLoad()">
 <!-- On start, make button inactive. Pausing makes it active again.-->
  <!-- Add confirm for reset and quit-->
   <div class="container">
-    <div id="roundNumRow" class="row bg-danger text-white fs-5">
+    <div id="roundNumRow" class="row bg-danger text-white fw-bold fs-2">
       <div class="col-4">
         Round:
       </div>
@@ -34,13 +35,13 @@
         --------
       </div>
     </div>
-    <div id="sectionRow" class="row bg-danger text-white fs-3 text-center">
+    <div id="sectionRow" class="row bg-danger text-white fw-bold fs-2 text-center">
       <div id="sectionDescription" class="col">
         -----
       </div>
     </div>
     <div class="row">
-      <div id="bigTime" class="col font-monospace text-center border" style="font-size: 30vw;">--:--</div>
+      <div id="bigTime" class="col text-center fst-normal" style="font-size: 40vw; font-family: lcd">--:--</div>
     </div>
     <div id="controls" class="row">
       
@@ -48,7 +49,7 @@
       <button id="startBtn" class="btn btn-primary btn-lg">
         <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentColor" class="bi bi-play-btn-fill" viewBox="0 0 16 16">
   <path d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m6.79-6.907A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814z"/>
-</svg> Start</button>
+</svg></button>
 
 
 
@@ -239,7 +240,9 @@ function onBodyLoad() {
       alert('WebSocket is not connected.');
     }
     // Disable the button
-    e.target.disabled = true;
+    e.target.closest("button").disabled = true;
+   
+    //console.log(e.target)
   };
   // Pause button click handler
   document.getElementById('pauseBtn').onclick = function() {
