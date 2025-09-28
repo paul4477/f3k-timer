@@ -3,6 +3,16 @@
 #
 echo Seting up Python venv. May take a moment...
 
+fn_exists() {
+  LC_ALL=C type $1 2>&1 | grep -q 'is a function'
+}
+
+## Check if we are in a venv already and deactivate it
+if ( fn_exists deactivate )
+then
+	deactivate
+fi
+
 ## create python venv
 python -m venv .venv
 source .venv/bin/activate
