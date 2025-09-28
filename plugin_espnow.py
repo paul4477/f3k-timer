@@ -41,7 +41,7 @@ class ESPNow():
         ## Check how recently we've been called
         ## Reduce rate of updates to max of 1/self.rate_limit per second
         now = time.time()
-        if (now - self.last_update) >= self.rate_Limit:
+        if (now - self.last_update) >= self.rate_limit:
             self.last_update = now
             return False
         else:
@@ -49,12 +49,12 @@ class ESPNow():
        
     async def tick(self, state):
         if (not self.limit_rate()) and self.port:        
-            msg=struct.pack("6p", self.state.time_str.encode("ascii"))
+            msg=struct.pack("6p", state.time_str.encode("ascii"))
             self.write(msg)
 
     async def second(self, state):
         if self.port:
-            msg=struct.pack("6p", self.state.time_str.encode("ascii"))
+            msg=struct.pack("6p", state.time_str.encode("ascii"))
             self.write(msg)
 
 
