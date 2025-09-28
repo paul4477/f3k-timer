@@ -28,3 +28,11 @@ In addition, the application will allow external integrations with time display 
 - Others? - user extensible with well defined interface
 
 Local control will be via web interface allowing headless running. This will use websockets for interactive status and messages and control.
+
+# Acknowledgements
+Uses ESPythoNOW: https://github.com/thomasfla/Linux-ESPNOW
+Copyright (c) 2019, thomasfla
+All rights reserved.
+
+7 Segment font (7segment.woff):
+https://torinak.com/font/7-segment
