@@ -25,7 +25,7 @@ class Pandora(PluginBase):
         if self.port:
             r = state.round.round_number
             g = state.group.group_number
-            s = state.get_section_code()
+            s = state.section.get_serial_code()
             d = state.round.short_name
             output = f"P|{r:02}"\
                     f"|{g:02}"\

@@ -113,8 +113,80 @@ import logging
 # the group needs to know what round it is part of to get round specific times
 # Round class contains list of groups
 
-SHORT_TIME_DEBUG = True
+SHORT_TIME_DEBUG = False
 
+class Section:
+    """
+    Represents a section with the running of a group - prep time, test time, no-fly, working, landing etc
+    """
+    def __init__(self, seconds_length, group_obj, round_obj, event_config=None):
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.event_config = event_config or {}
+        self.round = round_obj
+        self.group = group_obj
+        self.sectionTime = seconds_length
+
+    def __repr__(self):
+        return f"Section {self.get_description()} of {self.group} of {self.round} {int(self.sectionTime):3d}secs"
+    
+    def is_no_fly(self):
+        # Make the default restrictive so we don't use the base class!
+        return True
+    def get_serial_code(self):
+        return "ST"
+    def get_description(self):
+        return "Base class, shouldn't see this one."    
+
+class PrepSection(Section):
+    def is_no_fly(self):
+        # Note which way round the booleans are here!
+        # Config is CAN fly in prep.
+        # This method is "is this a no fly section?"
+        return not self.event_config.get('can_fly_in_prep', True)
+    def get_serial_code(self):
+        return "PT"
+    def get_description(self):
+        return "Preparation Time"
+class TestSection(Section):
+    def is_no_fly(self):
+        return False
+    def get_serial_code(self):
+        return "TT"
+    def get_description(self):
+        return "Test Flying Time"    
+class NoFlySection(Section):
+    def is_no_fly(self):
+        return True
+    def get_serial_code(self):
+        return "NF"
+    def get_description(self):
+        return "No Fly Time"    
+class WorkingSection(Section):
+    def is_no_fly(self):
+        return False
+    def get_serial_code(self):
+        return "WT"
+    def get_description(self):
+        return "Working Time"    
+class LandingSection(Section):
+    def is_no_fly(self):
+        return True # kind of
+    def get_serial_code(self):
+        return "LT"
+    def get_description(self):
+        return "Landing Window"    
+class GapSection(Section):
+    def get_description(self):
+        return "...waiting for next group..."
+class AnnounceSection(GapSection):
+    def get_description(self):
+        return "Announcement in progress"
+class ShowTimeSection(GapSection):
+    def get_serial_code(self):
+        return "DT"
+    def get_description(self):
+        return "Actual Time HH:MM"
+    
 class Group:
     """
     Represents a group within a round. Can generate its timing sections (prep, no-fly, work, land, gap).
@@ -126,64 +198,94 @@ class Group:
         self.event_config = event_config or {}
         # Example: self.sections = list(self.sections_iter())
         self.logger = logging.getLogger(self.__class__.__name__)
-
-    def sections_iter(self):
-        """
-        Generator yielding timing sections for this group.
-        Each yield is a tuple: (section_name, duration_seconds)
-        """
-        # Example timings, can be customized via event_config or round/task type
-        if SHORT_TIME_DEBUG:
-            prep_time = self.event_config.get('prep_time', 10)#300  # seconds
-            test_time = self.event_config.get('test_time', 0)  # 45 seconds
-            no_fly_time = self.event_config.get('no_fly_time', 6) #60
-            work_time = getattr(self.round, 'windowTime', 600)
-            land_time = self.event_config.get('land_time', 5) #30
-            gap_time = self.event_config.get('gap_time', 2) #2
-        else:
-            prep_time = self.event_config.get('prep_time', 300)#300  # seconds
-            test_time = self.event_config.get('test_time', 0)  # 45 seconds
-            no_fly_time = self.event_config.get('no_fly_time', 60) #60
-            work_time = getattr(self.round, 'windowTime', 600)
-            land_time = self.event_config.get('land_time', 30) #30
-            gap_time = self.event_config.get('gap_time', 120) #2
-
-
-        ## Add special case for F3K Task C (All Up Last Down)
-        
-
-        if prep_time > 0:
-            yield ('prep', prep_time)
-        if test_time > 0:
-            yield ('test', test_time)
-        if no_fly_time > 0:
-            yield ('no-fly', no_fly_time)
-        if work_time > 0:
-            yield ('work', work_time)
-        if land_time > 0:
-            yield ('land', land_time)
-        if self.round.short_code.startswith('f3k_c'):
-            if no_fly_time > 0:
-                yield ('no-fly', no_fly_time)
-            if work_time > 0:
-                yield ('work', work_time)
-            if land_time > 0:
-                yield ('land', land_time)            
-            if no_fly_time > 0:
-                yield ('no-fly', no_fly_time)
-            if work_time > 0:
-                yield ('work', work_time)
-            if land_time > 0:
-                yield ('land', land_time)                
-        if gap_time > 0:
-            yield ('gap', gap_time)
+        self.sections = []
+        self.populate_sections()
 
     def __iter__(self):
-        return self.sections_iter()
+        return (section for section in self.sections)
+    
+    def populate_sections(self):
+        # Example timings, can be customized via event_config or round/task type
+        if SHORT_TIME_DEBUG:
+            prep_time = self.event_config.get('prep_time', 10)
+            test_time = self.event_config.get('test_time', 5)
+            no_fly_time = self.event_config.get('no_fly_time', 6)
+            work_time = getattr(self.round, 'windowTime', 600)
+            land_time = self.event_config.get('land_time', 5)
+            gap_time = self.event_config.get('gap_time', 2)
+        else:
+            prep_time = self.event_config.get('prep_time', 300)
+            test_time = self.event_config.get('test_time', 45)
+            no_fly_time = self.event_config.get('no_fly_time', 60)
+            work_time = getattr(self.round, 'windowTime', 600)
+            land_time = self.event_config.get('land_time', 30)
+            gap_time = self.event_config.get('gap_time', 120)
 
+        if prep_time > 0:
+            self.logger.error("Adding prep section")
+            self.sections.append(PrepSection(prep_time, self, self.round, self.event_config))
+        if test_time > 0:
+            self.logger.error("Adding test section")
+            self.sections.append(TestSection(test_time, self, self.round, self.event_config))
+        if no_fly_time > 0:
+            self.logger.error("Adding no fly section")
+            self.sections.append(NoFlySection(no_fly_time, self, self.round, self.event_config))
+        if work_time > 0:
+            self.logger.error("Adding working section")
+            self.sections.append(WorkingSection(work_time, self, self.round, self.event_config))
+        if land_time > 0:
+            self.logger.error("Adding olanding section")
+            self.sections.append(LandingSection(land_time, self, self.round, self.event_config))
+        if gap_time > 0:
+            self.logger.error("Adding gap section")
+            self.sections.append(GapSection(gap_time, self, self.round, self.event_config))
+        self.logger.error(f"{self.sections}")
     def __repr__(self):
         return f"Group {self.group_number:2d} of Round {self.round.round_number:2d}"
 
+class AllUpGroup(Group):
+    def __init__(self, group_number, round_obj, pilot_list, event_config=None):
+        match round_obj.short_code:
+            case "f3k_c":
+                self.all_up_flight_count = 3
+            case "f3k_c2":
+                self.all_up_flight_count = 3
+            case "f3k_c3":
+                self.all_up_flight_count = 3
+            case _:
+                self.logger.error(f"Unexpected round short_code in All Up group: {round_obj.short_code}")
+        super().__init__(group_number, round_obj, pilot_list, event_config=None)
+
+    def populate_sections(self):
+        # Example timings, can be customized via event_config or round/task type
+        if SHORT_TIME_DEBUG:
+            prep_time = self.event_config.get('prep_time', 10)
+            test_time = self.event_config.get('test_time', 5)
+            no_fly_time = self.event_config.get('no_fly_time', 6)
+            work_time = getattr(self.round, 'windowTime', 15)
+            land_time = self.event_config.get('land_time', 5)
+            gap_time = self.event_config.get('gap_time', 2)
+        else:
+            prep_time = self.event_config.get('prep_time', 300)
+            test_time = self.event_config.get('test_time', 45)
+            no_fly_time = self.event_config.get('no_fly_time', 60)
+            work_time = getattr(self.round, 'windowTime', 600)
+            land_time = self.event_config.get('land_time', 30)
+            gap_time = self.event_config.get('gap_time', 120)
+
+        if prep_time > 0:
+            self.sections.append(PrepSection(prep_time, self, self.round, self.event_config))
+        if test_time > 0:
+            self.sections.append(TestSection(test_time, self, self.round, self.event_config))
+        for i in range(self.all_up_flight_count):
+            if no_fly_time > 0:
+                self.sections.append(NoFlySection(no_fly_time, self, self.round, self.event_config))
+            if work_time > 0:
+                self.sections.append(WorkingSection(work_time, self, self.round, self.event_config))
+            if land_time > 0:
+                self.sections.append(LandingSection(land_time, self, self.round, self.event_config))
+        if gap_time > 0:
+            self.sections.append(GapSection(gap_time, self, self.round, self.event_config))
 
 # Example usage:
 # round_obj = Round('f3k_a', 'A', 1)
@@ -198,8 +300,7 @@ class Round():
         self.short_name = short_name
         self.task_name = f3k_task_timing_data[self.short_code]['name']
         self.task_description = f3k_task_timing_data[self.short_code]['description']
-        if SHORT_TIME_DEBUG: self.windowTime = f3k_task_timing_data[self.short_code]['windowTime'] / 10
-        else: self.windowTime = f3k_task_timing_data[self.short_code]['windowTime']
+        self.windowTime = f3k_task_timing_data[self.short_code]['windowTime']
         self.groups = []
         self.logger = logging.getLogger(self.__class__.__name__)
 
@@ -227,7 +328,11 @@ class Round():
                     groups[flight['flight_group']].append(pilot_id)
         for group_letter in sorted(groups): 
             group_number = letters.index(group_letter)
-            self.groups.append( Group(group_number, self, groups[group_letter]) )
+            # Make All Up group if this is an All Up round
+            if self.short_code.startswith("f3k_c"):
+                self.groups.append( AllUpGroup(group_number, self, groups[group_letter]) )
+            else:
+                self.groups.append( Group(group_number, self, groups[group_letter]) )
 
     def __iter__(self):
         return (group for group in self.groups)

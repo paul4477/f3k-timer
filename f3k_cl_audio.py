@@ -62,37 +62,30 @@ time_sounds ={0: effect_0,
                 45: effect_45,
                 }
 
-class AudioPlayer:
+from plugin_base import PluginBase
+
+class AudioPlayer(PluginBase):
 
     def __init__(self, events):
-        #self.mixer = pygame.mixer
-        self.events = events
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.register_handlers()
+        super().__init__(events)
+        self.register_more_handlers()
 
-    def register_handlers(self):
+    def register_more_handlers(self):
         self.events.on("audioplayer.play_integer")(self.play_integer)
-        self.events.on("audioplayer.play_minutes_and_seconds")(self.play_minutes_and_seconds)
+        
         self.events.on("audioplayer.play_literally_seconds")(self.play_literally_seconds)
         self.events.on("audioplayer.play_literally_minutes")(self.play_literally_minutes)
         self.events.on("audioplayer.play_literally_second")(self.play_literally_second)
         self.events.on("audioplayer.play_literally_minute")(self.play_literally_minute)
 
-        # handlers for control commands from web client(s)
-        #events.on("player.start")(self.start)
-        #events.on("player.pause")(self.pause)
-        #events.on("player.skip_fwd")(self.skip_fwd)
-        #events.on("player.skip_back")(self.skip_back)   
-        #events.on("player.skip_previous")(self.skip_previous)
-        #events.on("player.skip_next")(self.skip_next)
-        #events.on("player.goto")(self.goto)
-        #events.on("player.stop")(self.stop)
-        #events.on("player.quit")(self.quit)
+    async def onSecond(self, state):
+      ## Triggered on every change of second
+      ## Logic here to decide what sound to play
 
-    async def play_minutes_and_seconds(self, seconds):
-      ## Play sounds
-      #self.logger.debug(f"AudioPlayer: play_minutes_and_seconds({seconds}, mod 15: {seconds%15} )")
-
+      ## Can state look up next and previous round/group/section?
+      
+      seconds = state.slot_time
+      self.logger.debug(f"in onSecond. state.slot_time is {state.slot_time}")
       if seconds % 15 == 0 and seconds > 60:
         match (seconds%60):
             case 45 | 30 | 15:
@@ -127,7 +120,17 @@ class AudioPlayer:
               pass
             case x if x <=20 : 
               self.events.trigger(f"audioplayer.play_integer", seconds)
-
+    
+    async def onNewSection(self, state):
+        self.logger.debug(f"in onNewSection. state.slot_time is {state.slot_time}")
+        #pass
+    async def onNewGroup(self, state):
+        #if self.enabled():
+        pass
+    async def onNewRound(self, state):
+        #if self.enabled():
+        pass  
+    
     async def play_integer(self, number):
         try: time_sounds[number].play()
         except IndexError:
@@ -140,5 +143,6 @@ class AudioPlayer:
     async def play_literally_second(self):
         effect_second.play()
     async def play_literally_minute(self):
-        effect_minute.play()               
+        effect_minute.play()         
+
         

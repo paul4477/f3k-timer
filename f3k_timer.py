@@ -3,15 +3,21 @@ import pygame
 
 import logging
 
-logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO, filename='f3k_timer.log')
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO, filename='f3k_timer.log')
 
 logger = logging.getLogger(__name__)
 
 import f3k_cl_web_server
 import f3k_cl_audio
 import f3k_cl_player
-import plugin_pandora
-import plugin_espnow
+try: 
+    import plugin_pandora
+except ImportError:
+    logger.error("Could not import plugin_pandora (or maybe 'serial')")
+try:
+    import plugin_espnow
+except ImportError:
+    logger.error("Could not import plugin_espnow (or maybe the espnow library)")
 
 from f3k_cl_event_engine import EventEngine, Clock
 
@@ -23,12 +29,11 @@ async def main():
     web_server = f3k_cl_web_server.WebFrontend(events)
     await web_server.startup()
     
-
-    audio_player = f3k_cl_audio.AudioPlayer(events)
-
     player = f3k_cl_player.Player(events)
-    player.add_plugin(plugin_pandora.Pandora(events))
-    #player.add_plugin(plugin_espnow.ESPNow(events))
+
+    player.add_event_consumer(f3k_cl_audio.AudioPlayer(events))
+    #player.add_event_consumer(plugin_pandora.Pandora(events))
+    #player.add_event_consumer(plugin_espnow.ESPNow(events))
     
     clock = Clock()
     TIMEREVENT = pygame.event.custom_type()

@@ -1,5 +1,5 @@
 
-from f3k_cl_round import Round, Group, make_rounds
+from f3k_cl_competition import Round, Group, make_rounds
 
 
 if __name__ == "__main__":
