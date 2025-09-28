@@ -1,454 +1,54 @@
 import asyncio
 import pygame
-import time
-import decimal
+
 import logging
-import math
-from collections import deque
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k_timer.log')
 
 logger = logging.getLogger(__name__)
 
-
-class Clock:
-    def __init__(self, time_func=pygame.time.get_ticks):
-        self.time_func = time_func
-        self.last_tick = time_func() or 0
-        self.next_tick = None
-        self.logger = logging.getLogger(self.__class__.__name__)    
-        self.recent_delays = deque([0]*100)
-        
-    async def get_fps(self):
-
-        return 1 / (sum(self.recent_delays) / len(self.recent_delays))
- 
-    async def tick(self, fps=0):
-        if fps <= 0:
-            return
-
-        frame_duration = (1.0 / fps) * 1000  # ms per frame
-        now = self.time_func()
-        next_tick = getattr(self, "next_tick", None)
-        if next_tick is None:
-            next_tick = now + frame_duration
-        else:
-            next_tick += frame_duration
-
-        delay = (next_tick - now) / 1000
-        if delay < 0:
-            delay = 0
-
-        self.recent_delays.pop()
-        self.recent_delays.appendleft(delay)
-        await asyncio.sleep(delay)
-        self.next_tick = next_tick
-        self.last_tick = next_tick
- 
- 
-class EventEngine:
-    def __init__(self):
-        self.listeners = {}
-        self.logger = logging.getLogger(self.__class__.__name__)
- 
-    def on(self, event):
-        if event not in self.listeners:
-            self.listeners[event] = []
- 
-        def wrapper(func, *args):
-            self.listeners[event].append(func)
-            return func
- 
-        return wrapper
- 
-    # this function is purposefully not async
-    # code calling this will do so in a "fire-and-forget" manner, and shouldn't be slowed down by needing to await a result
-    def trigger(self, event, *args, **kwargs):
-        asyncio.create_task(self.async_trigger(event, *args, **kwargs))
-        if not "tick" in event: self.logger.debug(f"Firing: {event}")
-        
- 
-    # whatever gets triggered is just added to the current asyncio event loop, which we then trust to run eventually
-    async def async_trigger(self, event, *args, **kwargs):
-        if event in self.listeners:
-            import inspect
-            handlers = []
-            for func in self.listeners[event]:
-                if inspect.iscoroutinefunction(func):
-                    handlers.append(func(*args, **kwargs))
-                else:
-                    async def wrapper(f, *a, **kw):
-                        return f(*a, **kw)
-                    handlers.append(wrapper(func, *args, **kwargs))
- 
-            # schedule all listeners to run
-            return await asyncio.gather(*handlers)
-  
-events = EventEngine()
-
-class State:
-    def __init__(self, player):
-        #self.round = None #Round(1, 1, 300000, 60000) # default round 1, group 1, 5min window, 1min no-fly
-        self.slot_time = 0
-        self.end_time = 0
-        self.iter_group = None
-        self.iter_round = None
-        self.iter_section = None
-        self.player = player
-        self.round = None
-        self.group = None
-        self.section = None
-        self.section_length = 0
-        self.time_str = "--:--"
-
-    def __repr__(self):
-        return f"State(round={self.round}, group={self.group}, section={self.section}, slot_time={self.slot_time}, end_time={self.end_time}, no-fly={self.is_no_fly()})"
-
-    def start(self, round=1, group=1):
-        self.iter_round = iter(self.player.rounds)
-        try:
-            self.round = next(self.iter_round)
-            logger.debug(f"START: Round: {self.round}")
-        except StopIteration:
-            ## End of event
-            logger.error("Trying to State.start(), no rounds, event ended")
-            return
-        
-        self.iter_group = iter(self.round)
-        try:
-            self.group = next(self.iter_group)
-            logger.debug(f"START: Group: {self.group}")
-        except StopIteration:
-            ## End of round
-            logger.debug(f"No groups in round {self.round}, cannot start")
-            return
-
-        self.iter_section = iter(self.group)
-        try:
-            self.section, self.section_length = next(self.iter_section)
-            self.slot_time = self.section_length
-            logger.debug(f"START: Section: {self.section}")
-        except StopIteration:
-            ## End of group
-            logger.debug(f"No sections in group {self.round}, cannot start")
-            return
-        
-        self.end_time = time.time() + self.slot_time
-    def resume(self):
-        self.end_time = time.time() + self.slot_time
-
-    def is_no_fly(self):
-        # Determine if current time is within no-fly period
-        #logger.debug(f"Is this NOFLY? {self.section}, no_fly(): {self.section in ['prep', 'work']}")
-        
-        return not (self.section in ['prep', 'work'])
-        #if self.section in ['prep', 'work']: return False
-        #else: return True
-
-    def next_round(self):
-        try:
-            self.round = next(self.iter_round)
-            logger.debug(f"NEXT_ROUND: Round: {self.round}")
-            self.iter_group = iter(self.round)
-            self.next_group()
-            return True
-        except StopIteration:
-            ## End of event
-            logger.debug(f"No more rounds, event ended")
-            self.slot_time = 0
-            self.end_time = 0
-            return False
-
-    def next_group(self):
-        try:
-            self.group = next(self.iter_group)
-            logger.debug(f"NEXT_GROUP: Group: {self.group}")
-            self.iter_section = iter(self.group)
-            self.next_section()
-            return True
-        except StopIteration:
-            ## End of event
-            logger.debug(f"No more groups in {self.round}")
-            self.slot_time = 0
-            self.end_time = 0
-            return False
-
-    def next_section(self):
-        try:
-            self.section, self.section_length = next(self.iter_section)
-            self.slot_time = self.section_length
-            self.end_time = time.time() + self.slot_time
-            logger.debug(f"NEXT_SECTION: Section: {self.section}")
-            return True
-        except StopIteration:
-            ## End of group
-            logger.debug(f"No more sections in {self.group}")
-            self.slot_time = 0
-            self.end_time = 0
-            return False
-        
-    def clear_section(self):
-        self.slot_time = 0
-        self.end_time = 0
-
-    def get_section_code(self):
-        section_code = {'prep': "PT",
-                        'no-fly': "NF",
-                        'test': "TT",
-                        'work': "WT",
-                        'land': "LT",
-                        'gap': "ST",
-                        '': "ST",
-                        None: "ST",
-                        'daytime': 'DT'
-                        }
-        return section_code.get(self.section, "DT")
-
-    def get_dict(self):
-        ## Map section names to descriptions
-        section_desc = {'prep': "Preparation Time",
-                        'no-fly': "No Fly Time",
-                        'test': "Test Flying Time",
-                        'work': "Working Time",
-                        'land': "Landing Window",
-                        'gap': "...waiting for next group...",
-                        '': "--------",
-                        None: "--------"
-                        }
-        if self.round:
-            return {
-                    'slot_time': self.slot_time, 
-                    'end_time': self.end_time, 
-                    'no_fly': self.is_no_fly(),
-                    'time_str': self.time_str if (self.slot_time or self.slot_time == 0) else '--:--',
-                    'round_num': self.round.round_number if self.round else '-',
-                    'group_num': self.group.group_number if self.group else '-',
-                    'section': section_desc.get(self.section, self.section),# if self.section else '----',
-                    'task_name': self.round.task_name if self.round else '--------',}
-        else:
-            return {
-                    'slot_time': 0, 
-                    'end_time': 0, 
-                    'no_fly': False,
-                    'time_str': self.time_str if (self.slot_time or self.slot_time == 0) else '--:--',
-                    'round_num': self.round.round_number if self.round else '-',
-                    'group_num': self.group.group_number if self.group else '-',
-                    'section': self.section if self.section else '----',
-                    'task_name': self.round.task_name if self.round else '--------',}
-    
-class Player:
-
-    def __init__(self, events):
-        self.rounds = []
-        self.state = State(self)
-        self.events = events
-        self.register_handlers()
-        #self.mixer = pygame.mixer
-        self.running = True
-        self.started = False
-        self.raw_json = None
-        self.last_announced = -1
-        self.logger = logging.getLogger(self.__class__.__name__)
-        self.pilots = {}
-        self.plugins = []
-
-    def __iter__(self):
-        return (rnd for rnd in self.rounds)
-    
-    def is_running(self):
-        # or more complex check that queries list of rounds and state object
-        return self.running
-    
-    def register_handlers(self):
-        self.events.on("player.data_available")(self.load_data)
-        # handlers for control commands from web client(s)
-        self.events.on("player.start")(self.start)
-        self.events.on("player.pause")(self.pause)
-        self.events.on("player.skip_fwd")(self.skip_fwd)
-        self.events.on("player.skip_back")(self.skip_back)   
-        self.events.on("player.skip_previous")(self.skip_previous)
-        self.events.on("player.skip_next")(self.skip_next)
-        self.events.on("player.goto")(self.goto)
-        self.events.on("player.stop")(self.stop)
-        self.events.on("player.quit")(self.quit)
-        
-    async def load_data(self, raw_json):
-        
-        
-        import f3k_cl_round
-        self.rounds = f3k_cl_round.make_rounds(raw_json)
-        self.logger.info(f"Loaded {len(self.rounds)} rounds from event data")
-
-        self.pilots = self._set_pilots(raw_json)
-        self.logger.info(f"Loaded {len(self.pilots)} pilots from event data")
-        self.logger.debug(f"Pilots: {self.pilots}")
-        
-        if len(self.rounds) > 0:
-            self.state.round = self.rounds[0]
-            self.state.slot_time = self.state.round.windowTime
-            self.state.end_time = None #time.time() + self.state.round.windowTime
-            self.logger.info(f"Set initial state to round {self.state.round}, window: {self.state.round.windowTime}s")
-        # Store in case we need it later
-        self.raw_json = raw_json
-
-    async def start(self):
-        
-        if not self.started:
-            self.started = True
-            self.state.start()
-            
-            #self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
-
-    async def pause(self):
-        if self.started: self.started = False
-        else: 
-            self.started = True
-            self.state.resume()
-    async def skip_fwd(self, seconds):
-        if self.state.slot_time:
-            self.state.slot_time -= 10
-            self.state.end_time = time.time() + self.state.slot_time
-    async def skip_back(self, seconds):
-        ## Protect against exceeding original section length?
-        if self.state.slot_time:
-            self.state.slot_time = min(self.state.section_length, self.state.slot_time + 10)
-            self.state.end_time = time.time() + self.state.slot_time
-    async def skip_previous(self):
-        pass
-    async def skip_next(self):
-        if not self.state.next_section():
-            if not self.state.next_group():
-                if not self.state.next_round():
-                    ## End of event
-                    self.logger.info("End of event")
-                    self.running = True # keep program alive
-                    self.started = False
-
-    async def goto(self, round=1, group=1):
-        await self.stop()
-        try: 
-            self.state.round = self.rounds[round-1]
-            self.state.slot_time = self.state.round.windowTime
-            self.state.end_time = None
-        except IndexError:
-            self.logger.error(f"Invalid round in goto: {round}")
-    async def quit(self):
-        self.running = False
-    async def stop(self):
-        self.logger.info("Stopping player")
-        self.started = False        
-        self.state = State(self)
-    def _set_pilots(self, raw_json):
-        pilots = {}
-        for pilot in raw_json['event']['pilots']:
-            pilots[int(pilot['pilot_id'])] = pilot['pilot_first_name'] + " " + pilot['pilot_last_name']
-        return pilots
-
-    def add_plugin(self, plugin_instance):
-        self.plugins.append(plugin_instance)
-        self.logger.debug(f"Added plugin: {plugin_instance.__class__.__name__}")
-
-    async def update(self):
-        # calculate new state.
-
-        ### Fire play sound event on specific times
-        now = time.time()
-        if self.started and self.state.end_time: 
-
-            self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
-            self.state.time_str = f"{int(self.state.slot_time/60):02d}:{self.state.slot_time%60:02d}"
-            #self.events.trigger(f"espnow.tick", self.state)
-            for plugin in self.plugins:
-                self.events.trigger(f"{plugin.__class__.__name__}.tick", self.state)
-
-            if self.last_announced != self.state.slot_time:
-                self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
-                self.last_announced = self.state.slot_time
-                for plugin in self.plugins:
-                    self.events.trigger(f"{plugin.__class__.__name__}.second", self.state)
-                #self.events.trigger(f"pandora.second", self.state)
-                #self.events.trigger(f"espnow.second", self.state)
-                #self.logger.debug(f"{self.state}")
-        
-        if self.started and self.state.end_time and now >= self.state.end_time: # current slot/section has ended
-            self.logger.info(f"End of section {self.state.section} in group {self.state.group}")   
-            self.last_announced = -1
-            self.state.clear_section()
-
-            if not self.state.next_section():
-                if not self.state.next_group():
-                    if not self.state.next_round():
-                        ## End of event
-                        self.logger.info("End of event")
-                        self.running = True # keep program alive
-                        self.started = False
-                        #self.mixer.play(pygame.mixer.Sound('sounds/horn.wav'))
-                        #self.events.trigger(f"audioplayer.play_literally_end_of_event")
-                        return
-                    else:
-                        self.logger.info(f"Start of round {self.state.round.round_number} window")
-                        for plugin in self.plugins:
-                            self.events.trigger(f"{plugin.__class__.__name__}.newRound", self.state)
-                else:
-                    self.logger.info(f"Start of group in round {self.state.round.round_number}")
-                    for plugin in self.plugins:
-                        self.events.trigger(f"{plugin.__class__.__name__}.newGroup", self.state)
-            else:
-                for plugin in self.plugins:
-                    self.events.trigger(f"{plugin.__class__.__name__}.newSection", self.state)
-
-
-
-import f3k_web
-import f3k_sounds
+import f3k_cl_web_server
+import f3k_cl_audio
+import f3k_cl_player
 import plugin_pandora
 import plugin_espnow
 
-plugins = []
+from f3k_cl_event_engine import EventEngine, Clock
+
 
 async def main():
     
-    web_server = f3k_web.WebFrontend(events)
+    events = EventEngine()
+
+    web_server = f3k_cl_web_server.WebFrontend(events)
     await web_server.startup()
     
 
-    audio_player = f3k_sounds.AudioPlayer(events)
+    audio_player = f3k_cl_audio.AudioPlayer(events)
 
-    player = Player(events)
+    player = f3k_cl_player.Player(events)
     player.add_plugin(plugin_pandora.Pandora(events))
     #player.add_plugin(plugin_espnow.ESPNow(events))
     
-    #data = json.load(open('test_data.json'))
-    #import f3k_cl_round
-    #player.rounds = f3k_cl_round.make_rounds(data)
-
     clock = Clock()
     TIMEREVENT = pygame.event.custom_type()
     pygame.time.set_timer(TIMEREVENT, 60000) 
     
     while player.is_running():
                        
+        ## We could handle local keypress etc here
+        ## If we wanted
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 return
             elif ev.type == TIMEREVENT:
                 fps = await clock.get_fps()
                 logger.debug(f"fps: {fps:.1f}")
-        
-                    
 
         await player.update()
-        #await announcer.update(player.state) # instead have this triggered by events from player?
-        #logger.debug(f"web_server.update")
         await web_server.update(player.state)
-        ## Pass state to all plugins to allow them to update
-        ## Or use events triggered from player.update() to notify plugins of changes (on each whole second for example)
-        #for plugin in plugins:
-        #    await plugin.update(player.state)
-
         # limit to x fps
         await clock.tick(24)
- 
  
 if __name__ == "__main__":
     pygame.init()

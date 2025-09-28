@@ -177,6 +177,7 @@ class WebFrontend:
     async def shutdown(self):
         if self.runner:
             await self.runner.cleanup()
+    
     def limit_rate(self):
         ## Check how recently we've been called
         ## Reduce rate of updates to max 6 per second
