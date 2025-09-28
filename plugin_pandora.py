@@ -1,24 +1,17 @@
 import serial
-import time
-import logging
+from plugin_base import PluginBase
 
-class Pandora():
+class Pandora(PluginBase):
     def __init__(self, events):
-        self.logger = logging.getLogger(self.__class__.__name__)
+        super().__init__(events)
         self.device = "/dev/ttyUSB0"
-        self.events = events
         self.port = None
         self.init_serial()
-        self.register_handlers()
     
     def write(self, bytes):
         self.port.write(bytes)
         self.port.flush()
         self.logger.debug(f"Sent to serial: {repr(bytes)}")
-
-    def register_handlers(self):
-        self.events.on("pandora.tick")(self.tick)
-        self.events.on("pandora.second")(self.second)
 
     def init_serial(self):
         try:
@@ -28,10 +21,7 @@ class Pandora():
         except:
             self.logger.exception(f"Couldn't open serial port {self.device}")
 
-    async def tick(self, state):
-        if self.port:
-            pass
-    async def second(self, state):
+    async def onSecond(self, state):
         if self.port:
             r = state.round.round_number
             g = state.group.group_number

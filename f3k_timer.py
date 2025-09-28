@@ -1,14 +1,10 @@
 import asyncio
- 
-from aiohttp import web
 import pygame
-import json 
 import time
 import decimal
 import logging
 import math
 from collections import deque
-Decimal = decimal.Decimal
 
 logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k_timer.log')
 
@@ -53,6 +49,7 @@ class Clock:
 class EventEngine:
     def __init__(self):
         self.listeners = {}
+        self.logger = logging.getLogger(self.__class__.__name__)
  
     def on(self, event):
         if event not in self.listeners:
@@ -68,6 +65,8 @@ class EventEngine:
     # code calling this will do so in a "fire-and-forget" manner, and shouldn't be slowed down by needing to await a result
     def trigger(self, event, *args, **kwargs):
         asyncio.create_task(self.async_trigger(event, *args, **kwargs))
+        if not "tick" in event: self.logger.debug(f"Firing: {event}")
+        
  
     # whatever gets triggered is just added to the current asyncio event loop, which we then trust to run eventually
     async def async_trigger(self, event, *args, **kwargs):
@@ -251,6 +250,7 @@ class Player:
         self.last_announced = -1
         self.logger = logging.getLogger(self.__class__.__name__)
         self.pilots = {}
+        self.plugins = []
 
     def __iter__(self):
         return (rnd for rnd in self.rounds)
@@ -344,6 +344,10 @@ class Player:
             pilots[int(pilot['pilot_id'])] = pilot['pilot_first_name'] + " " + pilot['pilot_last_name']
         return pilots
 
+    def add_plugin(self, plugin_instance):
+        self.plugins.append(plugin_instance)
+        self.logger.debug(f"Added plugin: {plugin_instance.__class__.__name__}")
+
     async def update(self):
         # calculate new state.
 
@@ -352,12 +356,17 @@ class Player:
         if self.started and self.state.end_time: 
             self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
             self.state.time_str = f"{int(self.state.slot_time/60):02d}:{self.state.slot_time%60:02d}"
-            self.events.trigger(f"espnow.tick", self.state)
+            #self.events.trigger(f"espnow.tick", self.state)
+            for plugin in self.plugins:
+                self.events.trigger(f"{plugin.__class__.__name__}.tick", self.state)
+
             if self.last_announced != self.state.slot_time:
                 self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
                 self.last_announced = self.state.slot_time
-                self.events.trigger(f"pandora.second", self.state)
-                self.events.trigger(f"espnow.second", self.state)
+                for plugin in self.plugins:
+                    self.events.trigger(f"{plugin.__class__.__name__}.tick", self.state)
+                #self.events.trigger(f"pandora.second", self.state)
+                #self.events.trigger(f"espnow.second", self.state)
                 #self.logger.debug(f"{self.state}")
         
         if self.started and self.state.end_time and now >= self.state.end_time: # current slot/section has ended
@@ -377,23 +386,36 @@ class Player:
                         return
                     else:
                         self.logger.info(f"Start of round {self.state.round.round_number} window")
+                        for plugin in self.plugins:
+                            self.events.trigger(f"{plugin.__class__.__name__}.newRound", self.state)
                 else:
                     self.logger.info(f"Start of group in round {self.state.round.round_number}")
+                    for plugin in self.plugins:
+                        self.events.trigger(f"{plugin.__class__.__name__}.newGroup", self.state)
+            else:
+                for plugin in self.plugins:
+                    self.events.trigger(f"{plugin.__class__.__name__}.newSection", self.state)
+
+
 
 import f3k_web
 import f3k_sounds
 import plugin_pandora
 import plugin_espnow
 
+plugins = []
+
 async def main():
     
     web_server = f3k_web.WebFrontend(events)
     await web_server.startup()
+    
+
     audio_player = f3k_sounds.AudioPlayer(events)
-    ## Initialise them here, but they are then controlled by events rather than directly
-    pandora = plugin_pandora.Pandora(events)
-    espnow = plugin_espnow.ESPNow(events)
+
     player = Player(events)
+    player.add_plugin(plugin_pandora.Pandora(events))
+    player.add_plugin(plugin_espnow.ESPNow(events))
     
     #data = json.load(open('test_data.json'))
     #import f3k_cl_round
