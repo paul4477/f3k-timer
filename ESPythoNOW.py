@@ -4,15 +4,6 @@ import random
 import time
 import struct
 
-try:
-  from Crypto.Cipher import AES
-except:
-  pass
-
-
-
-
-
 class ESPythoNow:
 
   def __init__(self, interface, mac="", callback=None, accept_broadcast=True, accept_all=False, accept_ack=False, block_on_send=False, pmk="", lmk=""):
