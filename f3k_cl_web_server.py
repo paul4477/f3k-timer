@@ -39,7 +39,7 @@ class WebFrontend:
         )
     async def handle_reset(self, request):
         # Serve the static HTML file
-        self.logger.debug(f"Resetting event data, {self.event_data_loaded}")
+        self.logger.info(f"Resetting event data, {self.event_data_loaded}")
         if self.event_data_loaded: self.event_data_loaded = False
         self.events.trigger(f"player.stop")
         
@@ -47,7 +47,7 @@ class WebFrontend:
         
 
     async def handle_default_page(self, request):
-        self.logger.debug(f"Serving default, {self.event_data_loaded}")
+        self.logger.info(f"Serving default, {self.event_data_loaded}")
         # Serve the static HTML file
         if self.event_data_loaded:
             file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
@@ -61,7 +61,7 @@ class WebFrontend:
             return web.Response(status=404, text="Default page not found")
 
     async def handle_run_page(self, request):
-        self.logger.debug(f"Serving run, {self.event_data_loaded}")
+        self.logger.info(f"Serving run, {self.event_data_loaded}")
         if self.event_data_loaded:# Serve the static HTML file
             file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
             try:
@@ -160,10 +160,10 @@ class WebFrontend:
                           self.logger.warning(f"Unknown command: {command}")
 
             elif msg.type == web.WSMsgType.ERROR:
-                self.logger.debug(f"WebSocket connection closed with exception {ws.exception()}")
+                self.logger.info(f"WebSocket connection closed with exception {ws.exception()}")
         finally:
           self.clients.remove(ws)
-          self.logger.debug(f"Client disconnected. Total: {len(self.clients)}")
+          self.logger.info(f"Client disconnected. Total: {len(self.clients)}")
         return ws
     
 

@@ -25,7 +25,7 @@ class ESPNow(PluginBase):
             self.port.start()
             self.logger.debug(f"ESPNow connection opened {self.port}")
         except:
-            self.logger.exception(f"Couldn't start ESPNow {self.device}")
+            self.logger.error(f"Couldn't start ESPNow {self.device}")
 
     async def onTick(self, state):
         if (not self.limit_rate()) and self.port:        

@@ -218,7 +218,7 @@ class Round():
                 # Only look at this round
                 try: round_data = pilot['rounds'][self.round_number - 1]
                 except IndexError:
-                    self.logger.error(f"Pilot {pilot_id} has no data for round {self.round_number}")
+                    self.logger.warning(f"Pilot {pilot_id} has no data for round {self.round_number}")
                     continue
                 assert round_data['round_number'] == self.round_number
                 for flight in round_data['flights']:

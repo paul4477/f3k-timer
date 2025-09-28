@@ -59,7 +59,7 @@ class EventEngine:
     def trigger(self, event, *args, **kwargs):
         asyncio.create_task(self.async_trigger(event, *args, **kwargs))
         # log events except the every frame ones...
-        if not "tick" in event: self.logger.debug(f"Firing: {event}")
+        if not "tick" in event: self.logger.info(f"Firing: {event}")
         
  
     # whatever gets triggered is just added to the current asyncio event loop, which we then trust to run eventually

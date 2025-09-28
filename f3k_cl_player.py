@@ -24,7 +24,7 @@ class State:
         self.iter_round = iter(self.player.rounds)
         try:
             self.round = next(self.iter_round)
-            self.logger.debug(f"START: Round: {self.round}")
+            self.logger.info(f"START: Round: {self.round}")
         except StopIteration:
             ## End of event
             self.logger.error("Trying to State.start(), no rounds, event ended")
@@ -33,7 +33,7 @@ class State:
         self.iter_group = iter(self.round)
         try:
             self.group = next(self.iter_group)
-            self.logger.debug(f"START: Group: {self.group}")
+            self.logger.info(f"START: Group: {self.group}")
         except StopIteration:
             ## End of round
             self.logger.debug(f"No groups in round {self.round}, cannot start")
@@ -43,7 +43,7 @@ class State:
         try:
             self.section, self.section_length = next(self.iter_section)
             self.slot_time = self.section_length
-            self.logger.debug(f"START: Section: {self.section}")
+            self.logger.info(f"START: Section: {self.section}")
         except StopIteration:
             ## End of group
             self.logger.debug(f"No sections in group {self.round}, cannot start")
@@ -64,13 +64,13 @@ class State:
     def next_round(self):
         try:
             self.round = next(self.iter_round)
-            self.logger.debug(f"NEXT_ROUND: Round: {self.round}")
+            self.logger.info(f"NEXT_ROUND: Round: {self.round}")
             self.iter_group = iter(self.round)
             self.next_group()
             return True
         except StopIteration:
             ## End of event
-            self.logger.debug(f"No more rounds, event ended")
+            self.logger.info(f"No more rounds, event ended")
             self.slot_time = 0
             self.end_time = 0
             return False
@@ -78,13 +78,13 @@ class State:
     def next_group(self):
         try:
             self.group = next(self.iter_group)
-            self.logger.debug(f"NEXT_GROUP: Group: {self.group}")
+            self.logger.info(f"NEXT_GROUP: Group: {self.group}")
             self.iter_section = iter(self.group)
             self.next_section()
             return True
         except StopIteration:
             ## End of event
-            self.logger.debug(f"No more groups in {self.round}")
+            self.logger.info(f"No more groups in {self.round}")
             self.slot_time = 0
             self.end_time = 0
             return False
@@ -94,11 +94,11 @@ class State:
             self.section, self.section_length = next(self.iter_section)
             self.slot_time = self.section_length
             self.end_time = time.time() + self.slot_time
-            self.logger.debug(f"NEXT_SECTION: Section: {self.section}")
+            self.logger.info(f"NEXT_SECTION: Section: {self.section}")
             return True
         except StopIteration:
             ## End of group
-            self.logger.debug(f"No more sections in {self.group}")
+            self.logger.info(f"No more sections in {self.group}")
             self.slot_time = 0
             self.end_time = 0
             return False
@@ -263,7 +263,7 @@ class Player:
 
     def add_plugin(self, plugin_instance):
         self.plugins.append(plugin_instance)
-        self.logger.debug(f"Added plugin: {plugin_instance.__class__.__name__}")
+        self.logger.info(f"Added plugin: {plugin_instance.__class__.__name__}")
 
     async def update(self):
         # calculate new state.
