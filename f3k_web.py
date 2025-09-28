@@ -171,7 +171,7 @@ class WebFrontend:
     async def startup(self):
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
-        site = web.TCPSite(self.runner, "0.0.0.0", 8080)
+        site = web.TCPSite(self.runner, "0.0.0.0", 80)
         await site.start()
  
     async def shutdown(self):
