@@ -113,6 +113,8 @@ import logging
 # the group needs to know what round it is part of to get round specific times
 # Round class contains list of groups
 
+SHORT_TIME_DEBUG = True
+
 class Group:
     """
     Represents a group within a round. Can generate its timing sections (prep, no-fly, work, land, gap).
@@ -131,12 +133,20 @@ class Group:
         Each yield is a tuple: (section_name, duration_seconds)
         """
         # Example timings, can be customized via event_config or round/task type
-        prep_time = self.event_config.get('prep_time', 10)#300  # seconds
-        test_time = self.event_config.get('test_time', 0)  # 45 seconds
-        no_fly_time = self.event_config.get('no_fly_time', 6) #60
-        work_time = getattr(self.round, 'windowTime', 600)
-        land_time = self.event_config.get('land_time', 5) #30
-        gap_time = self.event_config.get('gap_time', 2) #2
+        if SHORT_TIME_DEBUG:
+            prep_time = self.event_config.get('prep_time', 10)#300  # seconds
+            test_time = self.event_config.get('test_time', 0)  # 45 seconds
+            no_fly_time = self.event_config.get('no_fly_time', 6) #60
+            work_time = getattr(self.round, 'windowTime', 600)
+            land_time = self.event_config.get('land_time', 5) #30
+            gap_time = self.event_config.get('gap_time', 2) #2
+        else:
+            prep_time = self.event_config.get('prep_time', 300)#300  # seconds
+            test_time = self.event_config.get('test_time', 0)  # 45 seconds
+            no_fly_time = self.event_config.get('no_fly_time', 60) #60
+            work_time = getattr(self.round, 'windowTime', 600)
+            land_time = self.event_config.get('land_time', 30) #30
+            gap_time = self.event_config.get('gap_time', 120) #2
 
 
         ## Add special case for F3K Task C (All Up Last Down)
@@ -188,7 +198,8 @@ class Round():
         self.short_name = short_name
         self.task_name = f3k_task_timing_data[self.short_code]['name']
         self.task_description = f3k_task_timing_data[self.short_code]['description']
-        self.windowTime = f3k_task_timing_data[self.short_code]['windowTime'] /10 
+        if SHORT_TIME_DEBUG: self.windowTime = f3k_task_timing_data[self.short_code]['windowTime'] / 10
+        else: self.windowTime = f3k_task_timing_data[self.short_code]['windowTime']
         self.groups = []
         self.logger = logging.getLogger(self.__class__.__name__)
 
