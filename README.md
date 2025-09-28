@@ -4,8 +4,12 @@
 pip install requests pygame aiohttp 
 # Make sure required sound device is visible
 cat /proc/asound/cards
+
 # Turn up master volume:
 amixer sset "Master" 65536
+
+# Allow bind to port 80:
+sudo setcap 'cap_net_bind_service=+ep' <path to python>
 
 f3k_timer.py [-h] [--prep-minutes PREP_MINUTES] [--group-separation-minutes GROUP_SEPARATION_MINUTES] eventid
 
