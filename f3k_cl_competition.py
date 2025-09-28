@@ -177,7 +177,7 @@ class LandingSection(Section):
         return "Landing Window"    
 class GapSection(Section):
     def get_description(self):
-        return "...waiting for next group..."
+        return "Waiting for next group"
 class AnnounceSection(GapSection):
     def get_description(self):
         return "Announcement in progress"
@@ -222,22 +222,16 @@ class Group:
             gap_time = self.event_config.get('gap_time', 120)
 
         if prep_time > 0:
-            self.logger.error("Adding prep section")
             self.sections.append(PrepSection(prep_time, self, self.round, self.event_config))
         if test_time > 0:
-            self.logger.error("Adding test section")
             self.sections.append(TestSection(test_time, self, self.round, self.event_config))
         if no_fly_time > 0:
-            self.logger.error("Adding no fly section")
             self.sections.append(NoFlySection(no_fly_time, self, self.round, self.event_config))
         if work_time > 0:
-            self.logger.error("Adding working section")
             self.sections.append(WorkingSection(work_time, self, self.round, self.event_config))
         if land_time > 0:
-            self.logger.error("Adding olanding section")
             self.sections.append(LandingSection(land_time, self, self.round, self.event_config))
         if gap_time > 0:
-            self.logger.error("Adding gap section")
             self.sections.append(GapSection(gap_time, self, self.round, self.event_config))
         self.logger.error(f"{self.sections}")
     def __repr__(self):
