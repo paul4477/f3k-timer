@@ -1,9 +1,14 @@
+import logging
+import pygame
+from collections import deque
+import asyncio
+
 class Clock:
     def __init__(self, time_func=pygame.time.get_ticks):
+        self.logger = logging.getLogger(self.__class__.__name__)    
         self.time_func = time_func
         self.last_tick = time_func() or 0
         self.next_tick = None
-        self.logger = logging.getLogger(self.__class__.__name__)    
         self.recent_delays = deque([0]*100)
         
     async def get_fps(self):
@@ -35,8 +40,9 @@ class Clock:
  
 class EventEngine:
     def __init__(self):
-        self.listeners = {}
         self.logger = logging.getLogger(self.__class__.__name__)
+        self.listeners = {}
+        
  
     def on(self, event):
         if event not in self.listeners:
@@ -52,6 +58,7 @@ class EventEngine:
     # code calling this will do so in a "fire-and-forget" manner, and shouldn't be slowed down by needing to await a result
     def trigger(self, event, *args, **kwargs):
         asyncio.create_task(self.async_trigger(event, *args, **kwargs))
+        # log events except the every frame ones...
         if not "tick" in event: self.logger.debug(f"Firing: {event}")
         
  
