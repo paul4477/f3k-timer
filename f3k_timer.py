@@ -416,7 +416,7 @@ async def main():
 
     player = Player(events)
     player.add_plugin(plugin_pandora.Pandora(events))
-    player.add_plugin(plugin_espnow.ESPNow(events))
+    #player.add_plugin(plugin_espnow.ESPNow(events))
     
     #data = json.load(open('test_data.json'))
     #import f3k_cl_round
