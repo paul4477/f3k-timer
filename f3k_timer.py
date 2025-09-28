@@ -354,6 +354,7 @@ class Player:
         ### Fire play sound event on specific times
         now = time.time()
         if self.started and self.state.end_time: 
+
             self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
             self.state.time_str = f"{int(self.state.slot_time/60):02d}:{self.state.slot_time%60:02d}"
             #self.events.trigger(f"espnow.tick", self.state)
@@ -364,7 +365,7 @@ class Player:
                 self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
                 self.last_announced = self.state.slot_time
                 for plugin in self.plugins:
-                    self.events.trigger(f"{plugin.__class__.__name__}.tick", self.state)
+                    self.events.trigger(f"{plugin.__class__.__name__}.second", self.state)
                 #self.events.trigger(f"pandora.second", self.state)
                 #self.events.trigger(f"espnow.second", self.state)
                 #self.logger.debug(f"{self.state}")
