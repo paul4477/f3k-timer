@@ -1,20 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+    crossorigin="anonymous"></script>
   <title>Event Search</title>
   <style>
     /* small UX nicety */
-    #event-list li { cursor: pointer; }
-    @font-face { font-family: lcd; src: url(/assets/font/7segment.woff); } 
+    #event-list li {
+      cursor: pointer;
+    }
+
+    @font-face {
+      font-family: lcd;
+      src: url(/assets/font/7segment.woff);
+    }
+
+    button {
+      touch-action: manipulation;
+    }
   </style>
 </head>
+
 <body class="font-monospace lh-sm" onload="onBodyLoad()">
-<!-- On start, make button inactive. Pausing makes it active again.-->
- <!-- Add confirm for reset and quit-->
+  <!-- On start, make button inactive. Pausing makes it active again.-->
+  <!-- Add confirm for reset and quit-->
   <div class="container">
     <div id="roundNumRow" class="row bg-danger text-white fw-bold fs-2">
       <div class="col-4">
@@ -30,7 +45,7 @@
         -
       </div>
     </div>
-    <div id="roundNameRow" class="row bg-danger text-white fs-5 text-center">
+    <div id="roundNameRow" class="row bg-danger text-white fs-6 text-center">
       <div id="roundDescription" class="col">
         --------
       </div>
@@ -41,86 +56,96 @@
       </div>
     </div>
     <div class="row">
-      <div id="bigTime" class="col text-center fst-normal" style="font-size: 40vw; font-family: lcd">--:--</div>
+      <div id="bigTime" class="col text-center fst-normal" style="font-size: 30vw; font-family: lcd">--:--</div>
     </div>
+
     <div id="controls" class="row">
-      
 
-      <button id="startBtn" class="btn btn-primary btn-lg">
-        <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentColor" class="bi bi-play-btn-fill" viewBox="0 0 16 16">
-  <path d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m6.79-6.907A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814z"/>
-</svg></button>
-
-
-
-
-      <div class="btn-group" role="group">
-        <button id="skip_previousBtn" type="button" class="btn btn-primary" disabled>
-          <!-- Skip Back -->
-          <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentColor" class="bi bi-skip-backward-btn-fill"
+      <div class="row p-3 mx-auto">
+        <button id="startBtn" class="btn btn-primary btn-lg">
+          <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentColor" class="bi bi-play-btn-fill"
             viewBox="0 0 16 16">
             <path
-              d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m11.21-6.907L8.5 7.028V5.5a.5.5 0 0 0-.79-.407L5 7.028V5.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0V8.972l2.71 1.935a.5.5 0 0 0 .79-.407V8.972l2.71 1.935A.5.5 0 0 0 12 10.5v-5a.5.5 0 0 0-.79-.407" />
-          </svg></button>
-        <button id="skip_backBtn" type="button" class="btn btn-primary">
-          <!-- Back -->
-          <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentcolor" class="bi bi-arrow-left-square-fill"
-            viewBox="0 0 16 16">
-
-            <path
-              d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m9.71-6.907L7 7.028V5.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0V8.972l2.71 1.935a.5.5 0 0 0 .79-.407v-5a.5.5 0 0 0-.79-.407" />
-          </svg>
-        </button>
-        <button id="pauseBtn" type="button" class="btn btn-primary">
-          <!-- Pause -->
-          <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentcolor" class="bi bi-pause-circle-fill"
-            viewBox="0 0 16 16">
-            <path
-              d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M6.25 5C5.56 5 5 5.56 5 6.25v3.5a1.25 1.25 0 1 0 2.5 0v-3.5C7.5 5.56 6.94 5 6.25 5m3.5 0c-.69 0-1.25.56-1.25 1.25v3.5a1.25 1.25 0 1 0 2.5 0v-3.5C11 5.56 10.44 5 9.75 5" />
-          </svg></button>
-        <button id="skip_fwdBtn" type="button" class="btn btn-primary">
-          <!-- Forward -->
-          <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentcolor"
-            class="bi bi-arrow-right-square-fill" viewBox="0 0 16 16">
-
-            <path
-              d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m6.79-6.907A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407L9.5 8.972V10.5a.5.5 0 0 0 1 0v-5a.5.5 0 0 0-1 0v1.528z" />
-
-          </svg></button>
-        <button id="skip_nextBtn" type="button" class="btn btn-primary">
-          <!-- Skip Forward -->
-          <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentColor" class="bi bi-skip-forward-btn-fill"
-            viewBox="0 0 16 16">
-            <path
-              d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m4.79-6.907A.5.5 0 0 0 4 5.5v5a.5.5 0 0 0 .79.407L7.5 8.972V10.5a.5.5 0 0 0 .79.407L11 8.972V10.5a.5.5 0 0 0 1 0v-5a.5.5 0 0 0-1 0v1.528L8.29 5.093a.5.5 0 0 0-.79.407v1.528z" />
+              d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m6.79-6.907A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407l3.5-2.5a.5.5 0 0 0 0-.814z" />
           </svg></button>
       </div>
 
-      <a class="btn btn-warning" data-bs-toggle="collapse" href="#debugArea" role="button" aria-expanded="false"
-        aria-controls="collapseExample">
-        Show/Hide Debug
-      </a>
+      <div class="row p-3 mx-auto">
+        <div class="btn-group" role="group">
+          <button id="skip_previousBtn" type="button" class="btn btn-primary" disabled>
+            <!-- Skip Back -->
+            <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentColor"
+              class="bi bi-skip-backward-btn-fill" viewBox="0 0 16 16">
+              <path
+                d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m11.21-6.907L8.5 7.028V5.5a.5.5 0 0 0-.79-.407L5 7.028V5.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0V8.972l2.71 1.935a.5.5 0 0 0 .79-.407V8.972l2.71 1.935A.5.5 0 0 0 12 10.5v-5a.5.5 0 0 0-.79-.407" />
+            </svg></button>
+          <button id="skip_backBtn" type="button" class="btn btn-primary">
+            <!-- Back -->
+            <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentcolor"
+              class="bi bi-arrow-left-square-fill" viewBox="0 0 16 16">
 
-      <a class="btn btn-warning" data-bs-toggle="collapse" href="#wsSendArea" role="button" aria-expanded="false"
-        aria-controls="collapseExample">
-        Show/Hide WS Send
-      </a>
-    </div>
-    <div id="controls" class="row">
-      <a class="btn btn-warning" href="/reset">
-  <svg xmlns="http://www.w3.org/2000/svg" height="6vw" fill="currentColor" class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
-  <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
-  <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
-</svg>
- Reset Event
-</a>
-    <button id="quitBtn" class="btn btn-danger"><svg xmlns="http://www.w3.org/2000/svg" width="6vw" height="6vw" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16">
-  <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z"/>
-</svg> Quit</button>
-</div>
-    <div id="controls" class="row">
+              <path
+                d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m9.71-6.907L7 7.028V5.5a.5.5 0 0 0-1 0v5a.5.5 0 0 0 1 0V8.972l2.71 1.935a.5.5 0 0 0 .79-.407v-5a.5.5 0 0 0-.79-.407" />
+            </svg>
+          </button>
+          <button id="pauseBtn" type="button" class="btn btn-primary">
+            <!-- Pause -->
+            <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentcolor" class="bi bi-pause-circle-fill"
+              viewBox="0 0 16 16">
+              <path
+                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M6.25 5C5.56 5 5 5.56 5 6.25v3.5a1.25 1.25 0 1 0 2.5 0v-3.5C7.5 5.56 6.94 5 6.25 5m3.5 0c-.69 0-1.25.56-1.25 1.25v3.5a1.25 1.25 0 1 0 2.5 0v-3.5C11 5.56 10.44 5 9.75 5" />
+            </svg></button>
+          <button id="skip_fwdBtn" type="button" class="btn btn-primary">
+            <!-- Forward -->
+            <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentcolor"
+              class="bi bi-arrow-right-square-fill" viewBox="0 0 16 16">
 
+              <path
+                d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m6.79-6.907A.5.5 0 0 0 6 5.5v5a.5.5 0 0 0 .79.407L9.5 8.972V10.5a.5.5 0 0 0 1 0v-5a.5.5 0 0 0-1 0v1.528z" />
+
+            </svg></button>
+          <button id="skip_nextBtn" type="button" class="btn btn-primary">
+            <!-- Skip Forward -->
+            <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentColor"
+              class="bi bi-skip-forward-btn-fill" viewBox="0 0 16 16">
+              <path
+                d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m4.79-6.907A.5.5 0 0 0 4 5.5v5a.5.5 0 0 0 .79.407L7.5 8.972V10.5a.5.5 0 0 0 .79.407L11 8.972V10.5a.5.5 0 0 0 1 0v-5a.5.5 0 0 0-1 0v1.528L8.29 5.093a.5.5 0 0 0-.79.407v1.528z" />
+            </svg></button>
+        </div>
+      </div>
+      <div class="row p-1 mx-auto">
+        <a class="btn btn-warning" data-bs-toggle="collapse" href="#debugArea" role="button" aria-expanded="false"
+          aria-controls="collapseExample">
+          Show/Hide Debug
+        </a>
+      </div>
+      <div class="row p-1 mx-auto">
+        <a class="btn btn-warning" data-bs-toggle="collapse" href="#wsSendArea" role="button" aria-expanded="false"
+          aria-controls="collapseExample">
+          Show/Hide WS Send
+        </a>
+      </div>
+
+      <div class="row p-1 mx-auto">
+        <a class="btn btn-warning" href="/reset">
+          <svg xmlns="http://www.w3.org/2000/svg" height="6vw" fill="currentColor" class="bi bi-arrow-counterclockwise"
+            viewBox="0 0 16 16">
+            <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z" />
+            <path
+              d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466" />
+          </svg>
+          Reset Event
+        </a>
+      </div>
+      <div class="row p-1 mx-auto">
+        <button id="quitBtn" class="btn btn-danger"><svg xmlns="http://www.w3.org/2000/svg" width="6vw" height="6vw"
+            fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16">
+            <path
+              d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z" />
+          </svg> Quit</button>
+      </div>
     </div>
+
     <div class="collapse" id="debugArea">
       <div class="card card-body">
         <textarea id="wsRXMessage" rows="4" cols="50" placeholder=""></textarea><br>
@@ -139,153 +164,154 @@
 
 
 
-<script>
-let socket;
+  <script>
+    let socket;
 
-function onBodyLoad() {
-  socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/');
+    function onBodyLoad() {
+      socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/');
 
-  socket.onopen = function(event) {
-    console.log('WebSocket connection opened:', event);
-  };
+      socket.onopen = function (event) {
+        console.log('WebSocket connection opened:', event);
+      };
 
-  socket.onmessage = function(event) {
-    try {
-      const data = JSON.parse(event.data);
-      if (data && data.type) {
-        handleMessageByType(data.type, data);
-      } else {
-        console.warn('Received message without type:', data);
+      socket.onmessage = function (event) {
+        try {
+          const data = JSON.parse(event.data);
+          if (data && data.type) {
+            handleMessageByType(data.type, data);
+          } else {
+            console.warn('Received message without type:', data);
+          }
+        } catch (e) {
+          console.error('Failed to parse message:', event.data, e);
+        }
+      };
+
+      function handleMessageByType(type, data) {
+        switch (type) {
+          case 'time':
+            handleTime(data);
+            break;
+          case 'groupData':
+            handlegroupData(data);
+            break;
+          default:
+            console.warn('Unhandled message type:', type, data);
+        }
       }
-    } catch (e) {
-      console.error('Failed to parse message:', event.data, e);
-    }
-  };
 
-  function handleMessageByType(type, data) {
-    switch (type) {
-      case 'time':
-        handleTime(data);
-        break;
-      case 'groupData':
-        handlegroupData(data);
-        break;        
-      default:
-        console.warn('Unhandled message type:', type, data);
-    }
-  }
+      function handleTime(data) {
+        //console.log('Handling Time:', data);
+        document.getElementById('wsRXMessage').value = JSON.stringify(data);
+        document.getElementById('bigTime').textContent = data.time_str;
+        document.getElementById('roundNum').textContent = data.round_num;
+        document.getElementById('groupNum').textContent = data.group_num;
+        document.getElementById('roundDescription').textContent = data.task_name;
+        document.getElementById('sectionDescription').textContent = data.section;
 
-  function handleTime(data) {
-    //console.log('Handling Time:', data);
-    document.getElementById('wsRXMessage').value = JSON.stringify(data);
-    document.getElementById('bigTime').textContent = data.time_str;
-    document.getElementById('roundNum').textContent = data.round_num; 
-    document.getElementById('groupNum').textContent = data.group_num;
-    document.getElementById('roundDescription').textContent = data.task_name;
-    document.getElementById('sectionDescription').textContent = data.section;
-    
-    const nameRow = document.getElementById('roundNameRow')
-    const numRow = document.getElementById('roundNumRow')
-    const sectionRow = document.getElementById('sectionRow')
-        
-    if (data.no_fly && nameRow.classList.contains('bg-success')) {
-      nameRow.classList.remove('bg-success');
-      nameRow.classList.add('bg-danger');
-      numRow.classList.remove('bg-success');
-      numRow.classList.add('bg-danger');
-      sectionRow.classList.remove('bg-success');
-      sectionRow.classList.add('bg-danger');
-      
-    } 
-    else {
-      if (!data.no_fly && nameRow.classList.contains('bg-danger')) {
-      nameRow.classList.remove('bg-danger');
-      nameRow.classList.add('bg-success');
-      numRow.classList.remove('bg-danger');
-      numRow.classList.add('bg-success');
-      sectionRow.classList.remove('bg-danger');
-      sectionRow.classList.add('bg-success');
+        const nameRow = document.getElementById('roundNameRow')
+        const numRow = document.getElementById('roundNumRow')
+        const sectionRow = document.getElementById('sectionRow')
+
+        if (data.no_fly && nameRow.classList.contains('bg-success')) {
+          nameRow.classList.remove('bg-success');
+          nameRow.classList.add('bg-danger');
+          numRow.classList.remove('bg-success');
+          numRow.classList.add('bg-danger');
+          sectionRow.classList.remove('bg-success');
+          sectionRow.classList.add('bg-danger');
+
+        }
+        else {
+          if (!data.no_fly && nameRow.classList.contains('bg-danger')) {
+            nameRow.classList.remove('bg-danger');
+            nameRow.classList.add('bg-success');
+            numRow.classList.remove('bg-danger');
+            numRow.classList.add('bg-success');
+            sectionRow.classList.remove('bg-danger');
+            sectionRow.classList.add('bg-success');
+          }
+        }
       }
-    } 
-  }
-  function handlegroupData(data) {
-    //console.log('Handling groupData:', data);
-    console.log(JSON.stringify(data));
- 
-  }
-  
-  // Button click handler
-  document.getElementById('sendBtn').onclick = function() {
-    const msg = document.getElementById('wsTXMessage').value;
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(msg);
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
+      function handlegroupData(data) {
+        //console.log('Handling groupData:', data);
+        console.log(JSON.stringify(data));
 
-  // Quit button click handler
-  document.getElementById('quitBtn').onclick = function() {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"quit"}');
-    } else {
-      alert('WebSocket is not connected.');
+      }
+
+      // Button click handler
+      document.getElementById('sendBtn').onclick = function () {
+        const msg = document.getElementById('wsTXMessage').value;
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send(msg);
+        } else {
+          alert('WebSocket is not connected.');
+        }
+      };
+
+      // Quit button click handler
+      document.getElementById('quitBtn').onclick = function () {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send('{"command":"quit"}');
+        } else {
+          alert('WebSocket is not connected.');
+        }
+      };
+      // Quit button click handler
+      document.getElementById('startBtn').onclick = function (e) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send('{"command":"start"}');
+        } else {
+          alert('WebSocket is not connected.');
+        }
+        // Disable the button
+        e.target.closest("button").disabled = true;
+
+        //console.log(e.target)
+      };
+      // Pause button click handler
+      document.getElementById('pauseBtn').onclick = function () {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send('{"command":"pause"}');
+        } else {
+          alert('WebSocket is not connected.');
+        }
+      };
+      // FWD button click handler
+      document.getElementById('skip_fwdBtn').onclick = function () {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send('{"command":"skip_fwd"}');
+        } else {
+          alert('WebSocket is not connected.');
+        }
+      };
+      // Next button click handler
+      document.getElementById('skip_nextBtn').onclick = function () {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send('{"command":"skip_next"}');
+        } else {
+          alert('WebSocket is not connected.');
+        }
+      };
+      // REW button click handler
+      document.getElementById('skip_backBtn').onclick = function () {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send('{"command":"skip_back"}');
+        } else {
+          alert('WebSocket is not connected.');
+        }
+      };
+      // Back button click handler
+      document.getElementById('skip_previousBtn').onclick = function () {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+          socket.send('{"command":"skip_previous"}');
+        } else {
+          alert('WebSocket is not connected.');
+        }
+      };
     }
-  };
-    // Quit button click handler
-  document.getElementById('startBtn').onclick = function(e) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"start"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-    // Disable the button
-    e.target.closest("button").disabled = true;
-   
-    //console.log(e.target)
-  };
-  // Pause button click handler
-  document.getElementById('pauseBtn').onclick = function() {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"pause"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };  
-  // FWD button click handler
-  document.getElementById('skip_fwdBtn').onclick = function() {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_fwd"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };    
-    // Next button click handler
-  document.getElementById('skip_nextBtn').onclick = function() {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_next"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };    
-    // REW button click handler
-  document.getElementById('skip_backBtn').onclick = function() {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_back"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };    
-    // Back button click handler
-  document.getElementById('skip_previousBtn').onclick = function() {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_previous"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };   
-}
-</script>
+  </script>
 
 </body>
+
 </html>
