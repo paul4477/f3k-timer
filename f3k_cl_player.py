@@ -1,7 +1,20 @@
 import logging
 import time
 import math
+import asyncio 
+from f3k_cl_rtvoice import voice
 
+class Pilot:
+    def __init__(self, pilot_json):
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self.id = pilot_json['pilot_id']
+        self.name = pilot_json['pilot_first_name'] + " " + pilot_json['pilot_last_name']
+        self.logger.debug(f"Loading pilot {pilot_json['pilot_id']} {pilot_json['pilot_last_name']}")
+        
+        self.wav_audio = voice.generate_audio_bytes(self.name)
+
+    def __repr__(self):
+        return f"Pilot: {self.name} ({self.id})"
 class State:
     def __init__(self, player):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -236,7 +249,8 @@ class Player:
     def _set_pilots(self, raw_json):
         pilots = {}
         for pilot in raw_json['event']['pilots']:
-            pilots[int(pilot['pilot_id'])] = pilot['pilot_first_name'] + " " + pilot['pilot_last_name']
+            pilots[int(pilot['pilot_id'])] = Pilot(pilot)
+            #pilot['pilot_first_name'] + " " + pilot['pilot_last_name']
         return pilots
 
     def add_event_consumer(self, consumer_instance):
@@ -246,7 +260,7 @@ class Player:
     async def update(self):
         # calculate new state.
 
-        ### Fire play sound event on specific times
+        # Fire generic events for consumers to deal with.
         now = time.time()
         if self.started and self.state.end_time: 
             # Calculate timings every time around the loop
@@ -265,6 +279,7 @@ class Player:
                 for consumer in self.eventConsumers:
                     self.logger.debug(f"calling second on {consumer}, time: {self.state.slot_time}, last_announced: {self.last_announced}")
                     self.events.trigger(f"{consumer.__class__.__name__}.second", self.state)
+                # Make sure only do this once per "new" second.
                 self.last_announced = self.state.slot_time
 
         # This clause will be triggered when our section time has expired
@@ -287,13 +302,13 @@ class Player:
                         return
                     else:
                         self.logger.info(f"Start of round {self.state.round.round_number} window")
-                        #for consumer in self.eventConsumers:
-                         #   self.events.trigger(f"{consumer.__class__.__name__}.newRound", self.state)
+                        for consumer in self.eventConsumers:
+                            self.events.trigger(f"{consumer.__class__.__name__}.newRound", self.state)
                 else:
                     self.logger.info(f"Start of group in round {self.state.round.round_number}")
-                    #for consumer in self.eventConsumers:
-                     #   self.events.trigger(f"{consumer.__class__.__name__}.newGroup", self.state)
-           #else:
-               # for consumer in self.eventConsumers:
-                 #   self.events.trigger(f"{consumer.__class__.__name__}.newSection", self.state)
-#
+                    for consumer in self.eventConsumers:
+                        self.events.trigger(f"{consumer.__class__.__name__}.newGroup", self.state)
+            else:
+               for consumer in self.eventConsumers:
+                    self.events.trigger(f"{consumer.__class__.__name__}.newSection", self.state)
+

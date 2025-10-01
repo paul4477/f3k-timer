@@ -21,6 +21,9 @@ echo Installing required modules...
 echo
 .venv/bin/pip install -r requirements.txt
 
+echo TO DO! Voice downloads, sound generation etc
+echo TO DO make venv for beep generation and generate them
+
 echo
 echo
 echo Setting network capabilites for ESPNow access...
