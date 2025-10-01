@@ -114,7 +114,7 @@ import logging
 # Round class contains list of groups
 
 SHORT_TIME_DEBUG = False
-import f3k_cl_audio
+import audio_library
 class Section:
     """
     Represents a section with the running of a group - prep time, test time, no-fly, working, landing etc
@@ -130,16 +130,16 @@ class Section:
         # Default is every 30 seconds + 20 down to 5.
         # Excluding the first second which will usually be covered by the pre-section
         # announcement or the start of section announcement
-        self.say_seconds = list((x for x in range(seconds_length-1, 0 ,-1) if x%30==0)) + list(range(20,0,-1))
+        self.say_seconds = list((x for x in range(seconds_length-1, 0 ,-1) if x%30==0)) + list(range(20,4,-1))
         # Dict of timestamps for audio callouts
         # All these must be integer second values
         self.audio_times = {}
-        self.audio_times[4] = f3k_cl_audio.effect_countdown_beeps
+        self.audio_times[4] = audio_library.effect_countdown_beeps
         self.populate_audio_times()
         self.pre_announce_times = {}
         self.populate_pre_announce_times()
         
-        #self.audio_times[self.sectionTime - 2] = f3k_cl_audio.effect_countdown_beeps_end
+        #self.audio_times[self.sectionTime - 2] = audio_library.effect_countdown_beeps_end
 
     def __repr__(self):
         return f"Section {self.get_description()} of {self.group} of {self.round} {int(self.sectionTime):3d}secs"
@@ -182,14 +182,14 @@ class PrepSection(Section):
             self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
             self.say_seconds.remove(60)
             if isinstance(self.get_next_section(), TestSection):
-                self.audio_times[4] = f3k_cl_audio.effect_countdown_beeps
+                self.audio_times[4] = audio_library.effect_countdown_beeps
             else:
-                self.audio_times[4] = f3k_cl_audio.effect_countdown_beeps_end
+                self.audio_times[4] = audio_library.effect_countdown_beeps_end
                
         except IndexError:
             pass
-        self.audio_times[self.sectionTime - 1] = f3k_cl_audio.language_audio['vx_prep_start']
-        self.audio_times[self.sectionTime - 3] = f3k_cl_audio.task_audio[self.round.short_code]
+        self.audio_times[self.sectionTime - 1] = audio_library.language_audio['vx_prep_start']
+        self.audio_times[self.sectionTime - 3] = audio_library.task_audio[self.round.short_code]
         
 class TestSection(Section):
     def is_no_fly(self):
@@ -203,13 +203,13 @@ class TestSection(Section):
         self.say_seconds.remove(19)
         self.say_seconds.remove(20)
         self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
-        self.audio_times[4] = f3k_cl_audio.effect_countdown_beeps_end
-        self.audio_times[self.sectionTime-1] = f3k_cl_audio.language_audio['vx_test_time']
+        self.audio_times[4] = audio_library.effect_countdown_beeps_end
+        self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_test_time']
       
     def populate_pre_announce_times(self):
-        self.pre_announce_times[-60] = f3k_cl_audio.language_audio['vx_1m_to_test']
-        self.pre_announce_times[-30] = f3k_cl_audio.language_audio['vx_30s_to_test']
-        self.pre_announce_times[-20] = f3k_cl_audio.language_audio['vx_20s_to_test']
+        self.pre_announce_times[-60] = audio_library.language_audio['vx_1m_to_test']
+        self.pre_announce_times[-30] = audio_library.language_audio['vx_30s_to_test']
+        self.pre_announce_times[-20] = audio_library.language_audio['vx_20s_to_test']
 
 class NoFlySection(Section):
     def is_no_fly(self):
@@ -224,14 +224,14 @@ class NoFlySection(Section):
         self.say_seconds.remove(20)
         self.say_seconds.remove(30)
                
-        self.audio_times[self.sectionTime-1] = f3k_cl_audio.language_audio['vx_no_flying']    
+        self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_no_flying']    
 
     def populate_pre_announce_times(self):
         if not isinstance(self.get_previous_section(), TestSection): # Test is only 45 seconds
-            self.pre_announce_times[-60] = f3k_cl_audio.language_audio['vx_1m_to_no_fly']
+            self.pre_announce_times[-60] = audio_library.language_audio['vx_1m_to_no_fly']
         
-        self.pre_announce_times[-30] = f3k_cl_audio.language_audio['vx_30s_to_no_fly']
-        self.pre_announce_times[-20] = f3k_cl_audio.language_audio['vx_20s_to_no_fly']
+        self.pre_announce_times[-30] = audio_library.language_audio['vx_30s_to_no_fly']
+        self.pre_announce_times[-20] = audio_library.language_audio['vx_20s_to_no_fly']
 
 class WorkingSection(Section):
     def is_no_fly(self):
@@ -251,17 +251,17 @@ class WorkingSection(Section):
         self.say_seconds.remove(11)
         match self.sectionTime:
             case 183:
-                self.audio_times[self.sectionTime-4] = f3k_cl_audio.language_audio['vx_3m_window']    
+                self.audio_times[self.sectionTime-4] = audio_library.language_audio['vx_3m_window']    
             case 420:
-                self.audio_times[self.sectionTime-1] = f3k_cl_audio.language_audio['vx_7m_window']    
+                self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_7m_window']    
             case 600:
-                self.audio_times[self.sectionTime-1] = f3k_cl_audio.language_audio['vx_10m_window']    
+                self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_10m_window']    
             case 900:
-                self.audio_times[self.sectionTime-1] = f3k_cl_audio.language_audio['vx_15m_window']                                                    
+                self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_15m_window']                                                    
 
     def populate_pre_announce_times(self):
-        self.pre_announce_times[-30] = f3k_cl_audio.language_audio['vx_30s_to_working_time']
-        self.pre_announce_times[-20] = f3k_cl_audio.language_audio['vx_20s_to_working_time']    
+        self.pre_announce_times[-30] = audio_library.language_audio['vx_30s_to_working_time']
+        self.pre_announce_times[-20] = audio_library.language_audio['vx_20s_to_working_time']    
     
 class LandingSection(Section):
     def is_no_fly(self):
@@ -282,8 +282,8 @@ class LandingSection(Section):
         #self.say_seconds.remove(20)
         #self.say_seconds.remove(30)
         #self.say_seconds.remove(60)
-        self.audio_times[4] = f3k_cl_audio.effect_countdown_beeps_end
-        self.audio_times[self.sectionTime-2] = f3k_cl_audio.language_audio['vx_30s_landing_window']  
+        self.audio_times[4] = audio_library.effect_countdown_beeps_end
+        self.audio_times[self.sectionTime-2] = audio_library.language_audio['vx_30s_landing_window']  
 
 class GapSection(Section):
     def get_description(self):
@@ -291,7 +291,7 @@ class GapSection(Section):
     def populate_audio_times(self):
         self.say_seconds = []
         # Reset to clear other values
-        self.audio_times = [self.sectionTime-15] = f3k_cl_audio.language_audio['vx_round_sep']      
+        self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_round_sep']}
 
 class AnnounceSection(GapSection):
     def get_description(self):
