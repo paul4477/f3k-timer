@@ -210,6 +210,29 @@ class BeepGenerator:
 
 
 if __name__ == "__main__":
+    
+    import yaml
+
+    # Use https://onlinetonegenerator.com/multiple-tone-generator.html
+    # to experiment with mixing waves
+    
+    with open('tone_config.yml', 'r') as config_file:
+      config_data = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))
+
+    import pprint
+    pprint.pprint(config_data[0])
+    #pprint.pprint(config_data[1])
+    for tone_group in config_data:
+        print (f"{tone_group['name']} has {len(list((x for x in tone_group['beeps'] if 'beep' in x)))} tones")
+    import sys
+
+
+    sys.exit()
+
+    # Idea would be to extend the BG class to take this config in init 
+    # then run save_wav method to write the whole file.
+    # Loop over the config_data and generate all that are definfed.
+
     bg = BeepGenerator()
     freq_beep = 550
     freq_tone = 732

@@ -1,0 +1,92 @@
+---
+name: example1.wav
+beeps:
+  - beep:
+      pitch: 440 #hz
+      duration: 500 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+  - silence:
+      duration: 500 
+  - beep:
+      pitch: 550 #hz
+      duration: 1000 #ms
+      type: square # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+  - silence:
+      duration: 500 
+  - beep:
+      pitch: 660 #hz
+      duration: 1500 #ms
+      type: saw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+  - silence:
+      duration: 500
+  - beep:
+      pitch: 880 #hz
+      duration: 1500 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: -587 # hz only applicable for sqsaw type
+
+---
+name: 4321_3s.wav
+beeps:
+  - beep: &short_beep
+      pitch: 440 #hz
+      duration: 200 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+  - silence: &inverse_silence
+      duration: 800 
+  - beep: *short_beep
+  - silence: *inverse_silence
+  - beep: *short_beep
+  - silence: *inverse_silence
+  - beep: *short_beep
+  - silence: *inverse_silence    
+  - beep:
+      pitch: 550 #hz
+      duration: 1000 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+---
+name: 4321_3s.wav
+beeps:
+  - beep:
+      pitch: 440 #hz
+      duration: 200 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+  - silence:
+      duration: 800 
+  - beep:
+      pitch: 440 #hz
+      duration: 200 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+  - beep:
+      pitch: 440 #hz
+      duration: 200 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+  - silence:
+      duration: 800 
+  - beep:
+      pitch: 440 #hz
+      duration: 200 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+  - silence:
+      duration: 800 
+  - beep:
+      pitch: 440 #hz
+      duration: 200 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
+  - silence:
+      duration: 800 
+  - beep:
+      pitch: 550 #hz
+      duration: 3000 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 7 # hz only applicable for sqsaw type
