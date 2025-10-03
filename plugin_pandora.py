@@ -33,7 +33,7 @@ class Pandora(PluginBase):
                       f"|{d}\r\n" \
                       f"R{r:02}" \
                       f"G{g:02}" \
-                      f"T{state.slot_time:04}" \
+                      f"T{state.time_digits}" \
                       f"{s}\r".encode('ascii')
             self.write(output)
 

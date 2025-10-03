@@ -28,6 +28,7 @@ class State:
         self.section = None
         self.section_length = 0
         self.time_str = "--:--"
+        self.time_digits = "0000"
 
     def __repr__(self):
         return f"State(round={self.round}, group={self.group}, section={self.section}, slot_time={self.slot_time}, end_time={self.end_time}, no-fly={self.is_no_fly()})"
@@ -263,6 +264,8 @@ class Player:
             if not self.state.section.updatedWeb:
                 self.state.section.updatedWeb = True
                 return # once more round so that web server updates
+            for consumer in self.eventConsumers:
+                self.events.trigger(f"{consumer.__class__.__name__}.second", self.state)
 
             # No countdown, this will continue once announcements are done
             #for consumer in self.eventConsumers:
@@ -306,6 +309,7 @@ class Player:
             # Calculate timings every time around the loop
             self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
             self.state.time_str = f"{int(self.state.slot_time/60):02d}:{self.state.slot_time%60:02d}"
+            self.state.time_digits = f"{int(self.state.slot_time/60):02d}{self.state.slot_time%60:02d}"
             
             # Any consumers who want the more frequent updates can get them here.
             # We fire them all but the listeners may be null if they don't care.
