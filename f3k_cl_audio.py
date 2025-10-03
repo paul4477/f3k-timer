@@ -25,13 +25,11 @@ class AudioPlayer(PluginBase):
     async def onSecond(self, state):
       ## Triggered on every change of second
       ## Logic here to decide what sound to play
-
-      ## Can state look up next and previous round/group/section?
+      
       audio = state.section.audio_times.get(state.slot_time, None)
       if audio:
          self.events.trigger(f"audioplayer.play_audio", audio)
       ## Look at pre-announce for the next section
-      
       next_section = state.section.get_next_section()
       if next_section:
         audio = next_section.pre_announce_times.get(-state.slot_time, None)
@@ -105,12 +103,13 @@ class AudioPlayer(PluginBase):
         audio_library.effect_minute.play()         
     
     async def onPlayBytes(self, bytesio):
-        while pygame.mixer.get_busy():
-           await asyncio.sleep(0.2)
-        pygame.mixer.music.queue(bytesio, namehint='wav')
-        pygame.mixer.music.play()
-        while pygame.mixer.get_busy():
-           await asyncio.sleep(0.2)
+        #while pygame.mixer.get_busy():
+        #   await asyncio.sleep(0.2)
+        pygame.mixer.Sound(bytesio).play()
+        #pygame.mixer.music.play()
+        #while pygame.mixer.get_busy():
+        #
+        #    await asyncio.sleep(0.2)
 
     async def onPlayAudio(self, audio):
         audio.play()
