@@ -178,9 +178,14 @@ class WebFrontend:
         if self.runner:
             await self.runner.cleanup()
     
-    def limit_rate(self):
+    def limit_rate(self, state):
         ## Check how recently we've been called
         ## Reduce rate of updates to max 6 per second
+        try:
+            if state.section.get_serial_code()=="LT": ## Announcement
+                return False
+        except AttributeError:
+            pass
         now = time.time()
         if (now - self.last_update) >= 1/6:
             self.last_update = now
@@ -190,10 +195,8 @@ class WebFrontend:
 
     async def update(self, state):
         # Send the bits of state needed to the web clients
-        if (not self.limit_rate()) and state and state.round:
-            #msg = json.dumps({"type": "time", "T": state.slot_time, "E": state.end_time, "R": state.round.round_number, "G": state.round.group_number, "N": state.is_no_fly()})
-            
-            
+        #self.logger.debug(f"Sending update to web client.Limit rate?: {self.limit_rate(state)} {state.section.__class__.__name__} {state.round}")
+        if ((not self.limit_rate(state)) and state and state.round):
             d = state.get_dict()
             #self.logger.debug(f"Sending to client: {d}")
             msg = json.dumps(d | {"type": "time"} )
