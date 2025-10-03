@@ -23,7 +23,9 @@ voice_dir = voice_file[3:]
 import os.path
 
 def generate_sound_file(filename, text_to_speak):
+
   full_dir = os.path.join(language_dir, voice_dir)
+  print (os.path.join(full_dir, filename)+".wav <== "+text_to_speak)
   if not os.path.exists(full_dir):
     os.makedirs(full_dir, exist_ok=True)
   with wave.open(os.path.join(full_dir, filename+".wav"), "wb") as wav_file:
@@ -33,44 +35,22 @@ def generate_sound_file(filename, text_to_speak):
 
 from task_data import f3k_task_timing_data
 for item in f3k_task_timing_data:
-  print (item)
   generate_sound_file(item, f3k_task_timing_data[item]['description'])
 
-
-## Announce pilots and task
-
-## Prep
-## Announce prep started
-## Annonunce task name
-## Times
-## If test:
-  ## Announce 1min to test
-  ## Announce 30s to test
-  ## Announce 20s to test
-  ## normal beeps
-## else
-  ## Announce 1min to no fly
-  
-## Announce 30s to no fly
-## Announce 20s to no fly
-## beep down
-## Announce no fly - pilots can't fly
-## 30s to working time
-## 20s to working time
-## normal beep
-## announce 10min working time (do we need a different file for each time slot?) 3m 7m 10m 15m
-## normal beep
-## 30s landing window
-## Group separation time
-
-
-## Prep needs to be special to have pre-amble with pilots and taks announcement
-
+time_sounds = list(range(21)) + [30,45]
+print(time_sounds)
+for t in time_sounds:
+  generate_sound_file(f"{t:04d}", str(t))
 
 other_announcements = {
+  'minute0': 'minute',
+  'minute1': 'minutes',
+  'second0': 'second',
+  'second1': 'seconds',
+
   'vx_prep_starting': "Preparation time starting.",
   'vx_prep_start': "Preparation time started.",
-  'vx_round_sep': "Round separation time.",
+  'vx_group_sep': "Group separation time.",
 
   'vx_1m_to_test': "one minute to test time.",
   'vx_30s_to_test': "30 seconds to test time.",
@@ -98,7 +78,6 @@ other_announcements = {
 }
 
 for item in other_announcements:
-  print (item)
   generate_sound_file(item, other_announcements[item])
 
 

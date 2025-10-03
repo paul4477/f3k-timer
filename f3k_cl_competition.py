@@ -211,7 +211,7 @@ class GapSection(Section):
     def populate_audio_times(self):
         self.say_seconds = []
         # Reset to clear other values
-        self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_round_sep']}
+        self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_group_sep']}
 
 class AnnounceSection(GapSection):
     def get_serial_code(self):
@@ -222,26 +222,6 @@ class AnnounceSection(GapSection):
     def announce(self):
         import time
         pass
-        #self.events.trigger(f"audioplayer.play_audio", audio)
-
-
-        """audio_library.language_audio['vx_round'].play()
-        time.sleep(0.7)
-        try: audio_library.time_sounds[self.round.round_number].play()
-        except IndexError:
-            self.logger.error(f"No sound for integer {self.round.round_numer}")
-        time.sleep(0.7)
-        audio_library.language_audio['vx_group'].play()
-        time.sleep(0.7)
-        try: audio_library.time_sounds[self.group.group_numer].play()
-        except IndexError:
-            self.logger.error(f"No sound for integer {self.group.group_number}")
-        audio_library.task_audio[self.round.short_code].play()"""
-    
-        #self.events.trigger("audioplayer.play_bytes", pilot_audio)
-        
-
-
 
 class ShowTimeSection(GapSection):
     def get_serial_code(self):
