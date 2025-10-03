@@ -87,6 +87,11 @@ class PrepSection(Section):
         
         self.audio_times[self.sectionTime - 1] = audio_library.language_audio['vx_prep_start']
         self.audio_times[self.sectionTime - 3] = audio_library.task_audio[self.round.short_code]
+        self.audio_times[self.sectionTime - 120] = self.announcement
+        self.say_seconds.remove(self.sectionTime - 120)
+
+    def announcement(self):
+        return self.group.announce_sound
         
 class TestSection(Section):
     def is_no_fly(self):
@@ -214,14 +219,8 @@ class GapSection(Section):
         self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_group_sep']}
 
 class AnnounceSection(GapSection):
-    def get_serial_code(self):
-        return "LT"
     def get_description(self):
         return "Announcement in progress"
-    
-    def announce(self):
-        import time
-        pass
 
 class ShowTimeSection(GapSection):
     def get_serial_code(self):
@@ -242,6 +241,7 @@ class Group:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.sections = []
         self.populate_sections()
+        self.announce_sound = None
 
     def __iter__(self):
         return (section for section in self.sections)

@@ -26,9 +26,15 @@ class AudioPlayer(PluginBase):
       ## Triggered on every change of second
       ## Logic here to decide what sound to play
       
+      ## Look for customer audio events in this section
       audio = state.section.audio_times.get(state.slot_time, None)
       if audio:
-         self.events.trigger(f"audioplayer.play_audio", audio)
+          if callable(audio): # it might be a funtion/method to generate
+              self.events.trigger(f"audioplayer.play_audio", audio())
+          else:
+              self.events.trigger(f"audioplayer.play_audio", audio)
+        
+
       ## Look at pre-announce for the next section
       next_section = state.section.get_next_section()
       if next_section:

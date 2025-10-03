@@ -5,7 +5,7 @@ sys.path.insert(0, "../../")
 #from f3k_cl_competition import f3k_task_timing_data
 
 voice_file = "en_GB-northern_english_male-medium"
-voice_file = "en_US-lessac-medium"
+#voice_file = "en_US-lessac-medium"
 #voice = PiperVoice.load("../../en_US-lessac-medium.onnx")
 
 voice = PiperVoice.load(f"../../{voice_file}.onnx")
@@ -79,5 +79,7 @@ other_announcements = {
 
 for item in other_announcements:
   generate_sound_file(item, other_announcements[item])
+
+
 
 
