@@ -13,7 +13,7 @@ class ESPNow(PluginBase):
     
     def write(self, bytes):
         self.port.send("FF:FF:FF:FF:FF:FF", bytes)
-        self.logger.debug(f"ESPNow broadcast: {repr(bytes)}")
+        #self.logger.debug(f"ESPNow broadcast: {repr(bytes)}")
 
     def callback(self, from_mac, to_mac, msg):
         ## We're not listening for anything here.
