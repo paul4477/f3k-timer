@@ -129,14 +129,13 @@ class BeepGenerator:
             print(freq)
             if first_it:
                 sq_wave =   volume * sg.square(2 * np.pi * freq * ( x / self.sample_rate ))
-                #sine_wave = volume * np.sin(2 * np.pi * freq * (x / self.sample_rate))
                 first_it = False
             else:
                 sq_wave +=   volume * sg.sawtooth(2 * np.pi * freq * ( x / self.sample_rate ))
-                #sine_wave += volume * np.sin(2 * np.pi * freq * (x / self.sample_rate))
 
         self.audio.extend(list(sq_wave))
         return    
+    
     def append_squaresawwave(
             self,
             freq=440.0,
@@ -151,34 +150,15 @@ class BeepGenerator:
 
         first_it = True
         for volume, freq in zip(volumes, freqs):
-            #print(freq)
             if first_it:
                 sq_wave =   volume * sg.square(2 * np.pi * freq * ( x / self.sample_rate ))
-                #sine_wave = volume * np.sin(2 * np.pi * freq * (x / self.sample_rate))
                 first_it = False
             else:
                 sq_wave +=   volume * sg.sawtooth(2 * np.pi * freq * ( x / self.sample_rate ))
-                #sine_wave += volume * np.sin(2 * np.pi * freq * (x / self.sample_rate))
 
         self.audio.extend(list(sq_wave))
         return        
-    """def append_squaresawwave(
-        self,
-        freq=440.0, 
-        duration_milliseconds=500, 
-        volume=1.0):
 
-        num_samples = duration_milliseconds * (self.sample_rate / 1000.0)
-
-        for x in range(int(num_samples)):
-            square = sg.square(2 * np.pi * freq * ( x / self.sample_rate ))
-            saw = sg.sawtooth(2 * np.pi * freq+75 * ( x / self.sample_rate ))
-            self.audio.append(volume/2 * (square))
-            self.audio2.append(volume/2 * (saw))
-            #self.audio.append(volume * math.sin(2 * math.pi * freq * ( x / self.sample_rate )))
-        self.audio
-        return"""
-        
     def save_wav2(self, file_name):
         # Open up a wav file
         wav_file=wave.open(file_name,"w")
@@ -212,6 +192,10 @@ class BeepGenerator:
 if __name__ == "__main__":
     
     import yaml
+    ##
+    ## Basic code taken from:
+    ## https://stackoverflow.com/questions/33879523/python-how-can-i-generate-a-wav-file-with-beeps
+    ##
 
     # Use https://onlinetonegenerator.com/multiple-tone-generator.html
     # to experiment with mixing waves
@@ -273,7 +257,7 @@ if __name__ == "__main__":
     freq_beep = 500
     freq_tone = 442
     short = 100
-    long = 300
+    long = 500
     bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
     bg.append_silence(1000-short)
     bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
