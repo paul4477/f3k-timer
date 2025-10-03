@@ -11,8 +11,6 @@ class Pilot:
         self.id = pilot_json['pilot_id']
         self.name = pilot_json['pilot_first_name'] + " " + pilot_json['pilot_last_name']
         self.logger.debug(f"Loading pilot {pilot_json['pilot_id']} {pilot_json['pilot_last_name']}")
-        
-        self.wav_audio = voice.generate_audio_bytes(self.name)
 
     def __repr__(self):
         return f"Pilot: {self.name} ({self.id})"
@@ -298,7 +296,8 @@ class Player:
             while pygame.mixer.get_busy():
                 #self.logger.debug(f"Mixer busy: {pygame.mixer.get_busy()}")
                 await asyncio.sleep(0.5)            
-            self.state.next_section()
+            try: self.state.next_section()
+            except TypeError: pass
             return
 
         now = time.time()
