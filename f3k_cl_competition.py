@@ -87,6 +87,11 @@ class PrepSection(Section):
         
         self.audio_times[self.sectionTime - 1] = audio_library.language_audio['vx_prep_start']
         self.audio_times[self.sectionTime - 3] = audio_library.task_audio[self.round.short_code]
+        self.audio_times[self.sectionTime - 120] = self.announcement
+        self.say_seconds.remove(self.sectionTime - 120)
+
+    def announcement(self):
+        return self.group.announce_sound
         
 class TestSection(Section):
     def is_no_fly(self):
@@ -219,28 +224,6 @@ class AnnounceSection(GapSection):
     def get_description(self):
         return "Announcement in progress"
     
-    def announce(self):
-        import time
-        pass
-        #self.events.trigger(f"audioplayer.play_audio", audio)
-
-
-        """audio_library.language_audio['vx_round'].play()
-        time.sleep(0.7)
-        try: audio_library.time_sounds[self.round.round_number].play()
-        except IndexError:
-            self.logger.error(f"No sound for integer {self.round.round_numer}")
-        time.sleep(0.7)
-        audio_library.language_audio['vx_group'].play()
-        time.sleep(0.7)
-        try: audio_library.time_sounds[self.group.group_numer].play()
-        except IndexError:
-            self.logger.error(f"No sound for integer {self.group.group_number}")
-        audio_library.task_audio[self.round.short_code].play()"""
-    
-        #self.events.trigger("audioplayer.play_bytes", pilot_audio)
-        
-
 
 
 class ShowTimeSection(GapSection):
@@ -262,6 +245,7 @@ class Group:
         self.logger = logging.getLogger(self.__class__.__name__)
         self.sections = []
         self.populate_sections()
+        self.announce_sound = None
 
     def __iter__(self):
         return (section for section in self.sections)
