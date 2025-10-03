@@ -3,7 +3,7 @@ import pygame
 
 import logging
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k_timer.log')
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.WARN, filename='f3k_timer.log')
 
 logger = logging.getLogger(__name__)
 pygame.mixer.init(frequency=44100, size=-16, channels=1)
@@ -52,6 +52,7 @@ async def main():
                 fps = await clock.get_fps()
                 logger.debug(f"fps: {fps:.1f}")
 
+        
         await player.update()
         await web_server.update(player.state)
         # limit to x fps
