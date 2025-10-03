@@ -3,6 +3,9 @@
 
 ### Python ###
 start.sh
+*.wav
+*.onnx
+*.onnx.json
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
