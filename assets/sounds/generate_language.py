@@ -5,8 +5,9 @@ sys.path.insert(0, "../../")
 #from f3k_cl_competition import f3k_task_timing_data
 
 voice_file = "en_GB-northern_english_male-medium"
-
+voice_file = "en_US-lessac-medium"
 #voice = PiperVoice.load("../../en_US-lessac-medium.onnx")
+
 voice = PiperVoice.load(f"../../{voice_file}.onnx")
 
 syn_config = SynthesisConfig(
@@ -30,10 +31,10 @@ def generate_sound_file(filename, text_to_speak):
 
 
 
-
-#for item in f3k_task_timing_data:
-#  print (item)
-#  generate_sound_file(item, f3k_task_timing_data[item]['description'])
+from task_data import f3k_task_timing_data
+for item in f3k_task_timing_data:
+  print (item)
+  generate_sound_file(item, f3k_task_timing_data[item]['description'])
 
 
 ## Announce pilots and task
@@ -91,6 +92,8 @@ other_announcements = {
   "vx_15m_window": "15 minute working window.",
 
   "vx_30s_landing_window": "30 second landing window",
+  "vx_round": "Round: ",
+  "vx_group": "Group: ",
 
 }
 
@@ -99,38 +102,3 @@ for item in other_announcements:
   generate_sound_file(item, other_announcements[item])
 
 
-"""Round 1 Group 1
-
-Preparation time of x minutes starts in 5,4,3,2,1,
-
-x minutes remaining in prep time for ROund Y Group ZeroDivisionError
-  
-599,39:                             tempEntry.spokenText += " . There is no flying allowed during this time.";
-
-600,39:                             tempEntry.spokenTextOnCountdown += " of prep time before flight test window.";
-604,39:                             tempEntry.spokenTextOnCountdown += " of prep time before no fly window.";
-611,35:                         tempEntry.spokenTextOnCountdown = "before working window of Round " + round.round_number.ToString() + " Group " + group;
-619,35:                         tempEntry.spokenTextOnCountdown += ", Flight 1."; # all up?
-744,39:                             tempEntry.spokenText = (windowTime / 60).ToString() + " minute window for flight " + loop.ToString() + ".";
-641,35:                         tempEntry.spokenText = "45 Second Flight Test Window. Pilots may now make test flights.";
-642,35:                         tempEntry.spokenTextOnCountdown = " before no fly window";
-668,35:                         tempEntry.spokenText = "1 Minute no fly time before working window of Round " + round.round_number.ToString() + " Group " + group;
-669,35:                         tempEntry.spokenTextOnCountdown = "before working window";
-674,35:                         tempEntry.spokenText += " . Pilots must not be flying during this final minnit.";
-749,39:                             tempEntry.spokenText = (windowTime / 60).ToString() + " minnit working window.";
-782,39:                             tempEntry.spokenText = "30 second landing window.";
-785,39:                             tempEntry.spokenTextOnCountdown = "in landing window";
-825,35:                         tempEntry.spokenText = betweenStringSpoken + " Group Separation Time";
-828,35:                         tempEntry.spokenTextOnCountdown = "Left in group separation";
-861,31:                     tempEntry.spokenText = betweenStringSpoken + " Round Separation Time";
-
-
-seconds
-
-append to minute calls (e.g left in group separation time)
-Preambnle
-each section start text
-
-
-
-"""
