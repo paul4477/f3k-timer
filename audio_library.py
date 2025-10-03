@@ -31,10 +31,12 @@ effect_seconds = pygame.mixer.Sound('assets/sounds/en/second1.wav')
 effect_minute = pygame.mixer.Sound('assets/sounds/en/minute0.wav')
 effect_minutes = pygame.mixer.Sound('assets/sounds/en/minute1.wav')
 
-from f3k_cl_competition import f3k_task_timing_data
+from task_data import f3k_task_timing_data
 ## Voice spec - should get from config object
 language = "en"
 voice_name = "GB-northern_english_male-medium"
+voice_name = 'US-lessac-medium'
+
 
 # Task descriptions
 task_audio = {}
@@ -46,6 +48,9 @@ language_strings = [
 "vx_prep_starting",
 "vx_prep_start",
 "vx_round_sep",
+
+"vx_round",
+"vx_group",
 
 "vx_1m_to_test",
 "vx_30s_to_test",

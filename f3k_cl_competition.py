@@ -1,120 +1,9 @@
-f3k_task_timing_data = {}
-
-f3k_task_timing_data["f3k_a"] = {
-            'name': "F3K Task A - Last 1 x 5:00 in 7:00",
-            'description': "F3k Task A: Last flight: Max five minutes: Seven minute working window.",
-            'windowTime': 420
-}
-f3k_task_timing_data["f3k_a2"] = {
-            'name': "F3K Task A - Last 1 x 5:00 in 10:00",
-            'description': "F3k Task A: Last Flight. Max five minutes. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_b"] = {
-            'name': "F3K Task B - Last 2 x 4:00",
-            'description': "F3k Task B: Last two flights. Max four minutes. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_b2"] = {
-            'name': "F3K Task B - Last 2 x 3:00",
-            'description': "F3k Task B: Last two flights. Max three minutes. Seven minute working window.",
-            'windowTime': 420
-}
-f3k_task_timing_data["f3k_c"] = {
-            'name': "F3K Task C - All Up 3 x 3:00",
-            'description': "F3k Task C: All up last down. Single launch. Max three minutes. Three three minute working windows. Must launch before three second start signal ends.",
-            'windowTime': 183
-}
-f3k_task_timing_data["f3k_c2"] = {
-            'name': "F3K Task C - All Up 4 x 3:00",
-            'description': "F3k Task C: All up last down. Single launch. Max three minutes. Four three minute working windows. Must launch before three second start signal ends.",
-            'windowTime': 183
-}
-f3k_task_timing_data["f3k_c3"] = {
-            'name': "F3K Task C - All Up 5 x 3:00",
-            'description': "F3k Task C: All up last down. Single launch. Max three minutes. Five three minute working windows. Must launch before three second start signal ends.",
-            'windowTime': 183
-}
-f3k_task_timing_data["f3k_d"] = {
-            'name': "F3K Task D - Ladder",
-            'description': "F3k Task D: Ladder. Increasing time by fifteen seconds. Flights of 30 seconds, 45 seconds, 1 minute, 1 minute 15 seconds, 1 minute 30 seconds, 1 minute 45 seconds, and 2 minutes. Ten minute working window. Must achieve or exceed flight time before proceeding to the next target flight.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_d2"] = {
-            'name': "F3K Task D (2020) - 2 x 5:00",
-            'description': "F3k Task D: Two flights only. Max five minutes. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_e"] = {
-            'name': "F3K Task E - Poker",
-            'description': "F3k Task E: Poker. Pilot nominated times. Five max target times. Ten minute working window. Must achieve or exceed flight time before proceeding to the next target flight.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_e2"] = {
-            'name': "F3K Task E - Poker (2020) 10",
-            'description': "F3k Task E: Poker. Pilot nominated times. Three max target times. Ten minute working window. Must achieve or exceed flight time before proceeding to the next target flight. May call end of window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_e3"] = {
-            'name': "F3K Task E - Poker (2020) 15",
-            'description': "F3k Task E: Poker. Pilot nominated times. Three max target times. Fifteen minute working window. Must achieve or exceed flight time before proceeding to the next target flight. May call end of window.",
-            'windowTime': 900
-}
-f3k_task_timing_data["f3k_f"] = {
-            'name': "F3K Task F - Best 3 x 3:00",
-            'description': "F3k Task F: Best three flights. Max three minutes. Maximum six launches. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_g"] = {
-            'name': "F3K Task G - Best 5 x 2:00",
-            'description': "F3k Task G: Best five flights. Max two minutes. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_h"] = {
-            'name': "F3K Task H - 1, 2, 3, 4",
-            'description': "F3k Task H: One minute, two minute, three minute and four minute max flights in any order. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_i"] = {
-            'name': "F3K Task I - 3 x 3:20",
-            'description': "F3k Task I: Three longest flights. Max three minutes twenty seconds. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_j"] = {
-            'name': "F3K Task J - Last 3 x 3:00",
-            'description': "F3k Task J: Last three flights. Max three minutes. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_k"] = {
-            'name': "F3K Task K - Big Ladder",
-            'description': "F3k Task K: Big Ladder. Five target flights increasing time by thirty seconds. One minute, one minute thirty seconds, two minutes, two minutes thirty seconds, and three minute flights in order. All time counts. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_l"] = {
-            'name': "F3K Task L - Single Flight",
-            'description': "F3k Task L: Single flight. Single launch. Max time nine minutes fifty nine seconds. Ten minute working window.",
-            'windowTime': 600
-}
-f3k_task_timing_data["f3k_m"] = {
-            'name': "F3K Task M - Huge Ladder 3, 5, 7",
-            'description': "F3k Task M: Huge ladder. Three flights only. Three minute, five minute, and seven minnit flights in order. All time achieved counts. Fifteen minute working window.",
-            'windowTime': 900
-}
-f3k_task_timing_data["f3k_n"] = {
-            'name': "F3K Task N - Best Flight (9:59 Max)",
-            'description': "F3k Task N: Best flight. One flight only. Ten minute working window.",
-            'windowTime': 600
-}
-
 import logging
-
-#Group class returns iterator/generator for sections (prep, no-fly, work, land, gap)
-# pass event.config in so that group can calculate section times
-# the group needs to know what round it is part of to get round specific times
-# Round class contains list of groups
+import audio_library
+from task_data import f3k_task_timing_data
 
 SHORT_TIME_DEBUG = False
-import audio_library
+
 class Section:
     """
     Represents a section with the running of a group - prep time, test time, no-fly, working, landing etc
@@ -124,6 +13,8 @@ class Section:
         self.event_config = event_config or {}
         self.round = round_obj
         self.group = group_obj
+        self.updatedWeb = False # only used in announce
+        self.betweenWorkingTimes = False
         self.section_index = section_index
         self.sectionTime = seconds_length
         # List of times that will trigger audio calls
@@ -163,7 +54,11 @@ class Section:
     def get_serial_code(self):
         return "ST"
     def get_description(self):
-        return "Base class, shouldn't see this one."    
+        return "Base class, shouldn't see this one."  
+    def set_audio_time(self, t, sound):
+        try: self.say_seconds.remove(t)
+        except: pass
+        self.audio_times[t] = sound
 
 class PrepSection(Section):
     def is_no_fly(self):
@@ -181,6 +76,7 @@ class PrepSection(Section):
             self.say_seconds.remove(20)
             self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
             self.say_seconds.remove(60)
+            
             if isinstance(self.get_next_section(), TestSection):
                 self.audio_times[4] = audio_library.effect_countdown_beeps
             else:
@@ -188,6 +84,7 @@ class PrepSection(Section):
                
         except IndexError:
             pass
+        
         self.audio_times[self.sectionTime - 1] = audio_library.language_audio['vx_prep_start']
         self.audio_times[self.sectionTime - 3] = audio_library.task_audio[self.round.short_code]
         
@@ -200,6 +97,9 @@ class TestSection(Section):
         return "Test Flying Time"  
     def populate_audio_times(self):
 
+        self.say_seconds.remove(16)
+        self.say_seconds.remove(17)
+        self.say_seconds.remove(18)
         self.say_seconds.remove(19)
         self.say_seconds.remove(20)
         self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
@@ -223,20 +123,32 @@ class NoFlySection(Section):
         self.say_seconds.remove(19)
         self.say_seconds.remove(20)
         self.say_seconds.remove(30)
-               
+
+        self.say_seconds.append(45)               
         self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_no_flying']    
 
     def populate_pre_announce_times(self):
         if not isinstance(self.get_previous_section(), TestSection): # Test is only 45 seconds
             self.pre_announce_times[-60] = audio_library.language_audio['vx_1m_to_no_fly']
     
+        self.pre_announce_times[-30] = audio_library.language_audio['vx_30s_to_no_fly']
+        self.pre_announce_times[-20] = audio_library.language_audio['vx_20s_to_no_fly']
+
         if isinstance(self.group, AllUpGroup):
             ## Ending countdown is actually the start of the round
             ## so we need to use the 3s version for AllUp.
             self.audio_times[4] = audio_library.effect_countdown_beeps_3s   
-        else:
-            self.pre_announce_times[-30] = audio_library.language_audio['vx_30s_to_no_fly']
-            self.pre_announce_times[-20] = audio_library.language_audio['vx_20s_to_no_fly']
+
+class AllUpNoFlySection(NoFlySection):
+    ## Used between the working times
+    def populate_pre_announce_times(self):
+        ## Alter beep f
+        self.audio_times[4] = audio_library.effect_countdown_beeps_3s   
+        ## Previous section will be landing window
+        ## Adjust announcements accordingly
+        #self.pre_announce_times.pop(-60)
+        #self.pre_announce_times.pop(-30)
+        #self.pre_announce_times.pop(-20)
 
 class WorkingSection(Section):
     def is_no_fly(self):
@@ -290,7 +202,7 @@ class LandingSection(Section):
         #self.say_seconds.remove(60)
 
         self.audio_times[4] = audio_library.effect_countdown_beeps_end
-        self.audio_times[self.sectionTime-2] = audio_library.language_audio['vx_30s_landing_window']  
+        self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_30s_landing_window']  
         
 
 class GapSection(Section):
@@ -302,9 +214,35 @@ class GapSection(Section):
         self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_round_sep']}
 
 class AnnounceSection(GapSection):
+    def get_serial_code(self):
+        return "LT"
     def get_description(self):
         return "Announcement in progress"
     
+    def announce(self):
+        import time
+        pass
+        #self.events.trigger(f"audioplayer.play_audio", audio)
+
+
+        """audio_library.language_audio['vx_round'].play()
+        time.sleep(0.7)
+        try: audio_library.time_sounds[self.round.round_number].play()
+        except IndexError:
+            self.logger.error(f"No sound for integer {self.round.round_numer}")
+        time.sleep(0.7)
+        audio_library.language_audio['vx_group'].play()
+        time.sleep(0.7)
+        try: audio_library.time_sounds[self.group.group_numer].play()
+        except IndexError:
+            self.logger.error(f"No sound for integer {self.group.group_number}")
+        audio_library.task_audio[self.round.short_code].play()"""
+    
+        #self.events.trigger("audioplayer.play_bytes", pilot_audio)
+        
+
+
+
 class ShowTimeSection(GapSection):
     def get_serial_code(self):
         return "DT"
@@ -332,7 +270,7 @@ class Group:
         # Example timings, can be customized via event_config or round/task type
         if SHORT_TIME_DEBUG:
             prep_time = self.event_config.get('prep_time', 10)
-            test_time = self.event_config.get('test_time', 5)
+            test_time = self.event_config.get('test_time', 0)
             no_fly_time = self.event_config.get('no_fly_time', 6)
             work_time = getattr(self.round, 'windowTime', 600)
             land_time = self.event_config.get('land_time', 5)
@@ -347,6 +285,7 @@ class Group:
 
         ## Passing len(self.sections) so that the section knows its own index and we
         ## can use it to reference forward and back.
+        self.sections.append(AnnounceSection(0, self, self.round, len(self.sections), self.event_config))
         if prep_time > 0:
             self.sections.append(PrepSection(prep_time, self, self.round, len(self.sections), self.event_config))
         if test_time > 0:
@@ -386,6 +325,7 @@ class AllUpGroup(Group):
             land_time = self.event_config.get('land_time', 5)
             gap_time = self.event_config.get('gap_time', 2)
         else:
+            
             prep_time = self.event_config.get('prep_time', 300)
             test_time = self.event_config.get('test_time', 0)
             no_fly_time = self.event_config.get('no_fly_time', 60)
@@ -393,13 +333,17 @@ class AllUpGroup(Group):
             land_time = self.event_config.get('land_time', 30)
             gap_time = self.event_config.get('gap_time', 120)
 
+        self.sections.append(AnnounceSection(0, self, self.round, len(self.sections), self.event_config))
         if prep_time > 0:
             self.sections.append(PrepSection(prep_time, self, self.round, len(self.sections), self.event_config))
         if test_time > 0:
             self.sections.append(TestSection(test_time, self, self.round, len(self.sections), self.event_config))
         for i in range(self.all_up_flight_count):
             if no_fly_time > 0:
-                self.sections.append(NoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config))
+                if i == 0:
+                    self.sections.append(NoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config))
+                else:
+                    self.sections.append(AllUpNoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config))
             if work_time > 0:
                 self.sections.append(WorkingSection(work_time, self, self.round, len(self.sections), self.event_config))
             if land_time > 0:

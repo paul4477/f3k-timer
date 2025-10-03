@@ -3,6 +3,7 @@ import time
 import math
 import asyncio 
 from f3k_cl_rtvoice import voice
+import f3k_cl_competition
 
 class Pilot:
     def __init__(self, pilot_json):
@@ -182,7 +183,7 @@ class Player:
     async def load_data(self, raw_json):
         
         
-        import f3k_cl_competition
+        
         self.rounds = f3k_cl_competition.make_rounds(raw_json)
         self.logger.info(f"Loaded {len(self.rounds)} rounds from event data")
 
@@ -258,10 +259,50 @@ class Player:
         self.logger.info(f"Added plugin: {consumer_instance.__class__.__name__}")
 
     async def update(self):
-        # calculate new state.
+        
+        if isinstance(self.state.section, f3k_cl_competition.AnnounceSection):
+            self.logger.info(f"self.state.section.updatedWeb: '{self.state.section.updatedWeb}'")
+            if not self.state.section.updatedWeb:
+                self.state.section.updatedWeb = True
+                return # once more round so that web server updates
 
-        # Fire generic events for consumers to deal with.
+            # No countdown, this will continue once announcements are done
+            #for consumer in self.eventConsumers:
+            #    self.logger.debug(f"calling second on {consumer}, time: {self.state.slot_time}, last_announced: {self.last_announced}")
+            #    self.events.trigger(f"{consumer.__class__.__name__}.second", self.state)
+            await asyncio.sleep(1) ## Allow other events to fire and update web server
+            ## We are blocking during this announcement
+            from f3k_cl_rtvoice import voice
+            import pygame
+            announcement = f"This is Round: {self.state.round.round_number}. Group: {self.state.group.group_number}.\n"
+            announcement += "Pilot List.\n"
+            announcement += "\n".join(list(self.pilots[id].name for id in self.state.group.pilots))
+            
+            round_group_wav = voice.generate_audio_bytes(announcement, paragraph_silence=1)
+            self.state.group.announce_sound = pygame.mixer.Sound(round_group_wav)
+            self.events.trigger("audioplayer.play_audio", self.state.group.announce_sound)
+            
+            ## Wait for announcement to complete
+            await asyncio.sleep(2)
+            while pygame.mixer.get_busy():
+                #self.logger.debug(f"Mixer busy: {pygame.mixer.get_busy()}")
+                await asyncio.sleep(0.5)
+            
+            self.events.trigger("audioplayer.play_audio", 
+                                pygame.mixer.Sound(
+                                    voice.generate_audio_bytes("Preparation time is beggining now.")
+                                    )
+                                )
+            ## Wait for announcement to complete
+            await asyncio.sleep(2)
+            while pygame.mixer.get_busy():
+                #self.logger.debug(f"Mixer busy: {pygame.mixer.get_busy()}")
+                await asyncio.sleep(0.5)            
+            self.state.next_section()
+            return
+
         now = time.time()
+        # Fire generic events for consumers to deal with.
         if self.started and self.state.end_time: 
             # Calculate timings every time around the loop
             self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
