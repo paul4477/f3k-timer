@@ -219,12 +219,8 @@ class GapSection(Section):
         self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_round_sep']}
 
 class AnnounceSection(GapSection):
-    def get_serial_code(self):
-        return "LT"
     def get_description(self):
         return "Announcement in progress"
-    
-
 
 class ShowTimeSection(GapSection):
     def get_serial_code(self):
