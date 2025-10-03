@@ -1,14 +1,27 @@
-import math
-import wave
-import struct
-from scipy import signal as sg
-import numpy as np
+##
+## Basic code taken from:
+## https://stackoverflow.com/questions/33879523/python-how-can-i-generate-a-wav-file-with-beeps
+##
 
+# Use https://onlinetonegenerator.com/multiple-tone-generator.html
+# to experiment with mixing waves
 
-
-import numpy as np
-import scipy.io.wavfile
-
+try:
+    import sys
+    import os
+    import argparse
+    import struct
+    import wave
+    import yaml
+    from scipy import signal as sg
+    import numpy as np
+    import scipy.io.wavfile
+    
+except ImportError as err:
+    print("\nFailed to import required modules.\n" \
+            "Please run setup.sh to create the required virtual environment.\n")
+    raise err
+    sys.exit(1)
 
 class BeepGenerator:
     def __init__(self):
@@ -94,8 +107,12 @@ class BeepGenerator:
         # use the floating point -1.0 to 1.0 data directly in a WAV file but not
         # obvious how to do that using the wave module in python.
         self.audio = np.array(self.audio).astype(np.float32)
-        scipy.io.wavfile.write(file_name, int(self.sample_rate), np.array(self.audio))
-        print (f"Wrote: {file_name}")
+        try: scipy.io.wavfile.write(file_name, int(self.sample_rate), np.array(self.audio))
+        except PermissionError:
+            print("\nFailed to open file: {file_name} for writing.\n" \
+            "Do you have the file open in another application?\n\n")
+            sys.exit(1)
+        print (f"    Wrote: {file_name}")
         return
 
     def append_squarewave(
@@ -189,27 +206,92 @@ class BeepGenerator:
         return    
 
 
+def main():
+    parser = argparse.ArgumentParser(description="Command line utility for generating audio tone files.")
+    parser.add_argument(
+        "--config-file",
+        default="tone_config.yml",
+        help="Path to the configuration file (default: tone_config.yml)"
+    )
+    args = parser.parse_args()
+    config_path = args.config_file
+
+    if not os.path.isfile(config_path):
+        print(f"Error: Config file '{config_path}' does not exist.")
+        return None
+
+    try:
+        with open(config_path, 'r') as config_file:
+            config_data = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))
+    except Exception as e:
+        print(f"Error reading or parsing YAML config file: {e}")
+        return None
+
+    print(f"Using config file: {config_path}")
+    print("Config data loaded successfully.")
+    return config_data
+
+# ...existing code...
+
 if __name__ == "__main__":
-    
-    import yaml
-    ##
-    ## Basic code taken from:
-    ## https://stackoverflow.com/questions/33879523/python-how-can-i-generate-a-wav-file-with-beeps
-    ##
+    config_data = main()
+    if config_data is not None:
+        #import pprint
+        #pprint.pprint(config_data)
 
-    # Use https://onlinetonegenerator.com/multiple-tone-generator.html
-    # to experiment with mixing waves
-    
-    with open('tone_config.yml', 'r') as config_file:
-      config_data = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))
+        for tone_group in config_data:
+            try:
+                print(f"Processing: {tone_group.get('name', 'output')}. Contains {len( 
+                    list((x for x in tone_group.get('beeps', [])  if x.get('beep', None)))
+                    )
+                    } tones.")
+            except:
+                print(f"Warning: Invalid format in config file. Check examples.")
+                continue
+            bg = BeepGenerator()
+            beeps = tone_group.get("beeps", [])
+            for item in beeps:
+                if "beep" in item:
+                    beep = item["beep"]
+                    pitch = beep.get("pitch", 440)
+                    duration = beep.get("duration", 500)
+                    type_ = beep.get("type", "square")
+                    pitch_offset = beep.get("pitch_offset", 0)
+                    # Map type to BeepGenerator method
+                    if type_ == "sqsaw":
+                        bg.append_squaresawwave(
+                            freq=pitch,
+                            freq_offset=pitch_offset,
+                            duration_milliseconds=duration,
+                            volume=0.85
+                        )
+                    elif type_ == "square":
+                        bg.append_squarewave(
+                            freq=pitch,
+                            duration_milliseconds=duration,
+                            volume=0.85
+                        )
+                    elif type_ == "saw":
+                        # Use append_squarewaves with sawtooth for saw type
+                        bg.append_squarewave(
+                            freq=pitch,
+                            duration_milliseconds=duration,
+                            volume=0.85
+                        )
+                    else:
+                        print(f"Warning: Unknown beep type '{type_}'")
+                elif "silence" in item:
+                    silence = item["silence"]
+                    duration = silence.get("duration", 500)
+                    bg.append_silence(duration_milliseconds=duration)
+                else:
+                    print(f"Warning: Invalid beep/silence entry: {item}")
 
-    import pprint
-    pprint.pprint(config_data[0])
-    #pprint.pprint(config_data[1])
-    for tone_group in config_data:
-        print (f"{tone_group['name']} has {len(list((x for x in tone_group['beeps'] if 'beep' in x)))} tones")
-    import sys
-
+            name = tone_group.get("name", "output")
+            if not name.lower().endswith(".wav"):
+                name += ".wav"
+            
+            bg.save_wav(name)
 
     sys.exit()
 
@@ -217,7 +299,7 @@ if __name__ == "__main__":
     # then run save_wav method to write the whole file.
     # Loop over the config_data and generate all that are definfed.
 
-    bg = BeepGenerator()
+    """bg = BeepGenerator()
     freq_beep = 550
     freq_tone = 732
     saw_offset = 5
@@ -269,4 +351,4 @@ if __name__ == "__main__":
     
     bg.append_squaresawwave(volume=volume, freq=freq_tone,  freq_offset=saw_offset, duration_milliseconds=long)
     bg.save_wav("4321_short_down.wav")
-  
+  """

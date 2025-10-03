@@ -50,7 +50,7 @@ other_announcements = {
 
   'vx_prep_starting': "Preparation time starting.",
   'vx_prep_start': "Preparation time started.",
-  'vx_round_sep': "Round separation time.",
+  'vx_group_sep': "Group separation time.",
 
   'vx_1m_to_test': "one minute to test time.",
   'vx_30s_to_test': "30 seconds to test time.",

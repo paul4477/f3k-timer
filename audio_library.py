@@ -1,42 +1,42 @@
 import pygame
 import logging
 
-## Count sounds
-effect_0 = pygame.mixer.Sound('assets/sounds/en/0000.wav')
-effect_1 = pygame.mixer.Sound('assets/sounds/en/0001.wav')
-effect_2 = pygame.mixer.Sound('assets/sounds/en/0002.wav')
-effect_3 = pygame.mixer.Sound('assets/sounds/en/0003.wav')
-effect_4 = pygame.mixer.Sound('assets/sounds/en/0004.wav')
-effect_5 = pygame.mixer.Sound('assets/sounds/en/0005.wav')
-effect_6 = pygame.mixer.Sound('assets/sounds/en/0006.wav')
-effect_7 = pygame.mixer.Sound('assets/sounds/en/0007.wav')
-effect_8 = pygame.mixer.Sound('assets/sounds/en/0008.wav')
-effect_9 = pygame.mixer.Sound('assets/sounds/en/0009.wav')
-effect_10 = pygame.mixer.Sound('assets/sounds/en/0010.wav')
-effect_11 = pygame.mixer.Sound('assets/sounds/en/0011.wav')
-effect_12 = pygame.mixer.Sound('assets/sounds/en/0012.wav')
-effect_13 = pygame.mixer.Sound('assets/sounds/en/0013.wav')
-effect_14 = pygame.mixer.Sound('assets/sounds/en/0014.wav')
-
-effect_15 = pygame.mixer.Sound('assets/sounds/en/0015.wav')
-effect_16 = pygame.mixer.Sound('assets/sounds/en/0016.wav')
-effect_17 = pygame.mixer.Sound('assets/sounds/en/0017.wav')
-effect_18 = pygame.mixer.Sound('assets/sounds/en/0018.wav')
-effect_19 = pygame.mixer.Sound('assets/sounds/en/0019.wav')
-effect_20 = pygame.mixer.Sound('assets/sounds/en/0020.wav')
-effect_30 = pygame.mixer.Sound('assets/sounds/en/0030.wav')
-effect_45 = pygame.mixer.Sound('assets/sounds/en/0045.wav')
-effect_second = pygame.mixer.Sound('assets/sounds/en/second0.wav')
-effect_seconds = pygame.mixer.Sound('assets/sounds/en/second1.wav')
-effect_minute = pygame.mixer.Sound('assets/sounds/en/minute0.wav')
-effect_minutes = pygame.mixer.Sound('assets/sounds/en/minute1.wav')
-
-from task_data import f3k_task_timing_data
 ## Voice spec - should get from config object
 language = "en"
 voice_name = "GB-northern_english_male-medium"
 voice_name = 'US-lessac-medium'
 
+## Count sounds
+effect_0 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0000.wav')
+effect_1 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0001.wav')
+effect_2 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0002.wav')
+effect_3 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0003.wav')
+effect_4 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0004.wav')
+effect_5 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0005.wav')
+effect_6 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0006.wav')
+effect_7 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0007.wav')
+effect_8 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0008.wav')
+effect_9 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0009.wav')
+effect_10 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0010.wav')
+effect_11 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0011.wav')
+effect_12 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0012.wav')
+effect_13 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0013.wav')
+effect_14 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0014.wav')
+
+effect_15 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0015.wav')
+effect_16 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0016.wav')
+effect_17 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0017.wav')
+effect_18 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0018.wav')
+effect_19 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0019.wav')
+effect_20 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0020.wav')
+effect_30 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0030.wav')
+effect_45 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0045.wav')
+effect_second = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/second0.wav')
+effect_seconds = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/second1.wav')
+effect_minute = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/minute0.wav')
+effect_minutes = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/minute1.wav')
+
+from task_data import f3k_task_timing_data
 
 # Task descriptions
 task_audio = {}
@@ -47,7 +47,7 @@ for item in f3k_task_timing_data:
 language_strings = [
 "vx_prep_starting",
 "vx_prep_start",
-"vx_round_sep",
+"vx_group_sep",
 
 "vx_round",
 "vx_group",

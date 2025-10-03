@@ -216,7 +216,7 @@ class GapSection(Section):
     def populate_audio_times(self):
         self.say_seconds = []
         # Reset to clear other values
-        self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_round_sep']}
+        self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_group_sep']}
 
 class AnnounceSection(GapSection):
     def get_description(self):

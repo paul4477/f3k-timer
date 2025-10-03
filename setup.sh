@@ -13,13 +13,15 @@ then
 	deactivate
 fi
 
+$venv_name=venv-f3k-timer
+
 ## create python venv
-python -m venv .venv
-source .venv/bin/activate
+python -m venv $venv_name
+source $venv_name/bin/activate
 echo
 echo Installing required modules...
 echo
-.venv/bin/pip install -r requirements.txt
+$venv_name/bin/pip install -r requirements.txt
 
 echo TO DO! Voice downloads, sound generation etc
 echo TO DO make venv for beep generation and generate them
@@ -28,8 +30,8 @@ echo
 echo
 echo Setting network capabilites for ESPNow access...
 echo
-sudo setcap 'cap_net_bind_service=+ep cap_net_raw=+ep' `readlink -f .venv/bin/python`
-sudo getcap `readlink -f .venv/bin/python`
+sudo setcap 'cap_net_bind_service=+ep cap_net_raw=+ep' `readlink -f $venv_name/bin/python`
+sudo getcap `readlink -f $venv_name/bin/python`
 echo
 echo Setting Master volume...
 echo
@@ -53,9 +55,10 @@ sudo iwconfig \$ESPNOW_DEV mode monitor
 sudo ifconfig \$ESPNOW_DEV up
 sudo iwconfig \$ESPNOW_DEV channel \$CHANNEL
 
-.venv/bin/python f3k_timer.py
+$venv_name/bin/python f3k_timer.py
 EOL
 chmod u+x start.sh
 echo
 echo Done.
 echo
+with 
