@@ -277,7 +277,7 @@ class Player:
             ## We are blocking during this announcement
             from f3k_cl_rtvoice import voice
             import pygame
-            announcement = f"This is Round: {self.state.round.round_number}. Group: {self.state.group.group_number}.\n"
+            announcement = f"This is Round {self.state.round.round_number}. Group: {self.state.group.group_letter}.\n"
             announcement += "Pilot List.\n"
             announcement += "\n".join(list(self.pilots[id].name for id in self.state.group.pilots))
             

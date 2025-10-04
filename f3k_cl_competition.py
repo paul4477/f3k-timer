@@ -294,7 +294,7 @@ class AllUpGroup(Group):
                 self.all_up_flight_count = 3
             case _:
                 self.logger.error(f"Unexpected round short_code in All Up group: {round_obj.short_code}")
-        super().__init__(group_number, round_obj, pilot_list, event_config=None)
+        super().__init__(group_number, group_letter, round_obj, pilot_list, event_config=None)
 
     def populate_sections(self):
         # Example timings, can be customized via event_config or round/task type
