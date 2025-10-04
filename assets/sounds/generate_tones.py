@@ -241,10 +241,8 @@ if __name__ == "__main__":
 
         for tone_group in config_data:
             try:
-                print(f"Processing: {tone_group.get('name', 'output')}. Contains {len( 
-                    list((x for x in tone_group.get('beeps', [])  if x.get('beep', None)))
-                    )
-                    } tones.")
+                tone_count = len(list((x for x in tone_group.get('beeps', [])  if x.get('beep', None))))
+                print(f"Processing: {tone_group.get('name', 'output')}. Contains {tone_count} tones.")
             except:
                 print(f"Warning: Invalid format in config file. Check examples.")
                 continue
