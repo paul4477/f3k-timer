@@ -50,7 +50,7 @@ echo
 echo Setting network capabilites for ESPNow access...
 echo
 sudo setcap 'cap_net_bind_service=+ep cap_net_raw=+ep' `readlink -f $BIN_DIR/python`
-sudo getcap `readlink -f $BIN_DIR/bin/python`
+sudo getcap `readlink -f $BIN_DIR/python`
 echo
 echo Setting Master volume...
 echo
