@@ -81,8 +81,6 @@ effect_countdown_beeps = pygame.mixer.Sound('assets/sounds/4321_normal.wav')
 effect_countdown_beeps_3s = pygame.mixer.Sound('assets/sounds/4321_3s.wav')
 effect_countdown_beeps_end = pygame.mixer.Sound('assets/sounds/4321_short_down.wav')
 
-effect_horn = pygame.mixer.Sound('assets/sounds/chord.wav')
-
 time_sounds ={0: effect_0,
                 1: effect_1,
                 2: effect_2,
