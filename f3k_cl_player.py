@@ -129,6 +129,7 @@ class State:
                     'time_str': self.time_str if (self.slot_time or self.slot_time == 0) else '--:--',
                     'round_num': self.round.round_number if self.round else '-',
                     'group_num': self.group.group_number if self.group else '-',
+                    'group_let': self.group.group_letter if self.group else '-',
                     'section': self.section.get_description(),
                     'task_name': self.round.task_name if self.round else '--------',}
         else:
@@ -139,6 +140,7 @@ class State:
                     'time_str': time.strftime("%H:%M", time.localtime(time.time())),
                     'round_num': '-',
                     'group_num': '-',
+                    'group_let': '-',
                     'section': 'Actual Time HH:MM',
                     'task_name': '--------',}
     
