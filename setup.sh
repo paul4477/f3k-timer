@@ -69,13 +69,13 @@ ESPNOW_DEV=wlan1
 CHANNEL=4
 
 cd $DIR
-source .venv/bin/activate
+
 sudo ifconfig \$ESPNOW_DEV down
 sudo iwconfig \$ESPNOW_DEV mode monitor
 sudo ifconfig \$ESPNOW_DEV up
 sudo iwconfig \$ESPNOW_DEV channel \$CHANNEL
 
-$venv_name/bin/python f3k_timer.py
+$BIN_DIR/python f3k_timer.py
 EOL
 chmod u+x start.sh
 echo

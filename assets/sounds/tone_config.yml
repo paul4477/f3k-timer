@@ -50,7 +50,7 @@ beeps:
       type: sqsaw # saw, square or sqsaw
       pitch_offset: 7 # hz only applicable for sqsaw type
 ---
-name: 4321_1s.wav
+name: 4321_normal.wav
 beeps:
   - beep: &short_beep
       pitch: 550 #hz
