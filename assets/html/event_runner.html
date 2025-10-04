@@ -212,7 +212,7 @@
             !isNaN(parseInt(data.flight_num)) &&
             parseInt(data.flight_num) !== 1
         ) {
-            document.getElementById('groupLetter').textContent += ` (${data.flight_num})`;
+            document.getElementById('groupLetter').textContent += ` (Flight: ${data.flight_num})`;
         }
         document.getElementById('roundDescription').textContent = data.task_name;
         document.getElementById('sectionDescription').textContent = data.section;
