@@ -13,7 +13,10 @@ class Clock:
         
     async def get_fps(self):
 
-        return 1 / (sum(self.recent_delays) / len(self.recent_delays))
+        total = sum(self.recent_delays)
+        if total > 0:
+            return 1 / (total / len(self.recent_delays))
+        else: return 0
  
     async def tick(self, fps=0):
         if fps <= 0:
