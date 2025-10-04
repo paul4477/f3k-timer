@@ -232,8 +232,9 @@ class Group:
     """
     Represents a group within a round. Can generate its timing sections (prep, no-fly, work, land, gap).
     """
-    def __init__(self, group_number, round_obj, pilot_list, event_config=None):
+    def __init__(self, group_number, group_letter, round_obj, pilot_list, event_config=None):
         self.group_number = group_number
+        self.group_letter = group_letter
         self.round = round_obj  # Reference to parent Round
         self.pilots = pilot_list  # List of pilot IDs in this group
         self.event_config = event_config or {}
@@ -280,10 +281,10 @@ class Group:
             self.sections.append(GapSection(gap_time, self, self.round, len(self.sections), self.event_config))
         self.logger.error(f"{self.sections}")
     def __repr__(self):
-        return f"Group {self.group_number:2d} of Round {self.round.round_number:2d}"
+        return f"Group {self.group_letter} of Round {self.round.round_number:2d}"
 
 class AllUpGroup(Group):
-    def __init__(self, group_number, round_obj, pilot_list, event_config=None):
+    def __init__(self, group_number, group_letter, round_obj, pilot_list, event_config=None):
         match round_obj.short_code:
             case "f3k_c":
                 self.all_up_flight_count = 3
@@ -374,9 +375,9 @@ class Round():
             group_number = letters.index(group_letter)
             # Make All Up group if this is an All Up round
             if self.short_code.startswith("f3k_c"):
-                self.groups.append( AllUpGroup(group_number, self, groups[group_letter]) )
+                self.groups.append( AllUpGroup(group_number, group_letter, self, groups[group_letter]) )
             else:
-                self.groups.append( Group(group_number, self, groups[group_letter]) )
+                self.groups.append( Group(group_number, group_letter, self, groups[group_letter]) )
 
     def __iter__(self):
         return (group for group in self.groups)
