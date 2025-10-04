@@ -289,9 +289,9 @@ class AllUpGroup(Group):
             case "f3k_c":
                 self.all_up_flight_count = 3
             case "f3k_c2":
-                self.all_up_flight_count = 3
+                self.all_up_flight_count = 4
             case "f3k_c3":
-                self.all_up_flight_count = 3
+                self.all_up_flight_count = 5
             case _:
                 self.logger.error(f"Unexpected round short_code in All Up group: {round_obj.short_code}")
         super().__init__(group_number, group_letter, round_obj, pilot_list, event_config=None)
