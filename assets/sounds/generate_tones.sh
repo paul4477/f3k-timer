@@ -11,27 +11,24 @@ then
 	deactivate
 fi
 
-
-if [ -d venv-tone_gen ]; 
+if [ ! -d venv-tone_gen ]; 
 then
-  if [ -d venv-tone_gen/bin ];
-  then
-    source venv-tone_gen/bin/activate
-  else
-    source venv-tone_gen/Scripts/activate
-  fi
-  python generate_tones.py "$@"
-  deactivate
-else
   echo It seems like you may not have a venv set up.
   echo Generating...
   python -m venv venv-tone_gen
   if [ -d venv-tone_gen/bin ];
   then
-    source venv-tone_gen/bin/activate
+    BIN_DIR=venv-tone_gen/bin
   else
-    source venv-tone_gen/Scripts/activate
+    BIN_DIR=venv-tone_gen/Scripts
   fi
-  pip install -r requirements_tone_gen.txt
-  deactivate
+  echo
+  echo Upgrading Pip...
+  echo
+  $BIN_DIR/pip install --upgrade pip
+  echo
+  echo Installing required libraries...
+  echo
+  $BIN_DIR/pip install -r requirements_tone_gen.txt
 fi
+$BIN_DIR/python generate_tones.py "$@"
