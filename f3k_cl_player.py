@@ -207,8 +207,12 @@ class Player:
         if not self.started:
             self.started = True
             self.state.start()
-            
-            #self.events.trigger(f"audioplayer.play_minutes_and_seconds", self.state.slot_time)
+            for consumer in self.eventConsumers:
+                self.events.trigger(f"{consumer.__class__.__name__}.newRound", self.state)
+            for consumer in self.eventConsumers:
+                self.events.trigger(f"{consumer.__class__.__name__}.newGroup", self.state)
+            for consumer in self.eventConsumers:
+                self.events.trigger(f"{consumer.__class__.__name__}.newSection", self.state)            
 
     async def pause(self):
         if self.started: self.started = False
@@ -234,6 +238,20 @@ class Player:
                     self.logger.info("End of event")
                     self.running = True # keep program alive
                     self.started = False
+                    #self.mixer.play(pygame.mixer.Sound('sounds/horn.wav'))
+                    #self.events.trigger(f"audioplayer.play_literally_end_of_event")
+                    return
+                else:
+                    self.logger.info(f"Start of round {self.state.round.round_number} window")
+                    for consumer in self.eventConsumers:
+                        self.events.trigger(f"{consumer.__class__.__name__}.newRound", self.state)
+            else:
+                self.logger.info(f"Start of group in round {self.state.round.round_number}")
+                for consumer in self.eventConsumers:
+                    self.events.trigger(f"{consumer.__class__.__name__}.newGroup", self.state)
+        else:
+            for consumer in self.eventConsumers:
+                self.events.trigger(f"{consumer.__class__.__name__}.newSection", self.state)                    
 
     async def goto(self, round=1, group=1):
         await self.stop()
@@ -264,12 +282,17 @@ class Player:
     async def update(self):
         
         if isinstance(self.state.section, f3k_cl_competition.AnnounceSection):
-            #self.logger.debug(f"In Announce loop {self.state.time_str} {self.state.end_time} {self.state.time_digits} {self.state.group.announce_sound}")
+            self.logger.debug(f"In Announce loop {self.state.time_str} {self.state.end_time} {self.state.time_digits} {self.state.group.announce_sound}")
             ## While our annnouncement is not generated, loop - keeping the time the same?
             self.state.time_str = "--:--"
             self.state.time_digits = "0000"
-            await asyncio.sleep(0.5)
-
+            
+            # Audio is not ready, so update consumers and return to outer loop
+            for consumer in self.eventConsumers:
+                self.events.trigger(f"{consumer.__class__.__name__}.tick", self.state)
+            for consumer in self.eventConsumers:
+                self.events.trigger(f"{consumer.__class__.__name__}.second", self.state)                
+            #await asyncio.sleep(0.1)
             if self.state.group.announce_sound is None and not self.state.group.announce_sound_generating:
                 announcement = f"This is Round {self.state.round.round_number}. Group: {self.state.group.group_letter}.\n"
                 announcement += "Pilot List.\n"
@@ -300,11 +323,7 @@ class Player:
 
                 self.state.next_section()
                 return # loop again
-
-            # Audio is not ready, so update consumers and return to outer loop
-            for consumer in self.eventConsumers:
-                self.events.trigger(f"{consumer.__class__.__name__}.second", self.state)
-
+            ## Return to outer loop
             return
 
         now = time.time()

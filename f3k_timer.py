@@ -3,7 +3,7 @@ import pygame
 
 import logging
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.WARN, filename='f3k_timer.log')
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.INFO, filename='f3k_timer.log')
 
 logger = logging.getLogger(__name__)
 pygame.mixer.init(frequency=44100, size=-16, channels=1)
@@ -24,20 +24,31 @@ from f3k_cl_event_engine import EventEngine, Clock
 
 
 async def main():
-    
-    
+    ## Create event manager    
     events = EventEngine()
-
-    voice_name = 'en_US-lessac-medium'
-    voice = f3k_cl_rtvoice.Voice(voice_name, events)
-
+    # player deals with updating event state
+    player = f3k_cl_player.Player(events)
+    
+    # web_server deals with messages to and from web interface
     web_server = f3k_cl_web_server.WebFrontend(events)
     await web_server.startup()
+    player.add_event_consumer(web_server)
     
-    player = f3k_cl_player.Player(events)
-
+    # AudioPlayer deals with audio playback at trigger points
     player.add_event_consumer(f3k_cl_audio.AudioPlayer(events))
+    
+    # Realtime Voice is used occaissionally to generate audio
+    voice_name = 'en_US-lessac-medium'
+    player.add_event_consumer(f3k_cl_rtvoice.Voice(voice_name, events))
+
+    ## External devices
+    ## Serial interface to Pandora base station
+    
     #player.add_event_consumer(plugin_pandora.Pandora(events))
+
+    ## WiFi (ESPNow) broadcast interface to anything that is listening
+    ## requires wlan device in appropriate state (see start.sh)
+    
     #player.add_event_consumer(plugin_espnow.ESPNow(events))
     
     clock = Clock()
@@ -57,7 +68,7 @@ async def main():
 
         
         await player.update()
-        await web_server.update(player.state)
+        
         # limit to x fps
         await clock.tick(24)
  

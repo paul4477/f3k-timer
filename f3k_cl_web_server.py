@@ -4,15 +4,16 @@ import time
 import logging
 import os
 from aiohttp import web
-
+from plugin_base import PluginBase
 
 CORS_HEADERS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "*"
 }
- 
-class WebFrontend:
+
+class WebFrontend(PluginBase):
     def __init__(self, events, port=8080):
+        super().__init__(events)
         self.port = port
         self.runner = None
         self.app = web.Application()
@@ -22,6 +23,7 @@ class WebFrontend:
         self.event_data_loaded = False
         self.logger = logging.getLogger(self.__class__.__name__)
         self.last_update = 0
+        #self.register_more_handlers()
         # Add route for default page
         
         self.app.add_routes(
@@ -34,9 +36,12 @@ class WebFrontend:
                 web.post("/timesync/", self.handle_timesync),
                 web.get("/ws/", self.ws_handler),
                 web.post("/load_event", self.handle_load_event),
-                
             ]
         )
+
+    #def register_more_handlers(self):
+    #    pass
+
     async def handle_reset(self, request):
         # Serve the static HTML file
         self.logger.info(f"Resetting event data, {self.event_data_loaded}")
@@ -193,17 +198,56 @@ class WebFrontend:
         else:
             return True
 
-    async def update(self, state):
+    async def onTick(self, state):
         # Send the bits of state needed to the web clients
         #self.logger.debug(f"Sending update to web client.Limit rate?: {self.limit_rate(state)} {state.section.__class__.__name__} {state.round}")
         if ((not self.limit_rate(state)) and state and state.round):
             d = state.get_dict()
             #self.logger.debug(f"Sending to client: {d}")
-            msg = json.dumps(d | {"type": "time"} )
+
+            msg = json.dumps({"type": "time", "data": d} )
             for ws in list(self.clients):
                 #self.logger.debug(f"Sending to client: {msg}")
                 try: 
                     await ws.send_str(msg)
                 except: #ConnectionResetError ??
                     pass
-            
+
+    async def onSecond(self, state):
+        pass
+    async def onNewSection(self, state):
+        #if self.enabled():
+        pass
+    async def onNewGroup(self, state):
+        d = {'pilots':[]}
+        for pid in state.group.pilots:
+            d['pilots'].append(state.player.pilots[pid].name)
+        d['group_number'] = state.group.group_number
+        d['group_letter'] = state.group.group_letter
+
+        msg = json.dumps({"type": "groupData", "data": d} )
+        for ws in list(self.clients):
+            #self.logger.debug(f"Sending to client: {msg}")
+            try: 
+                await ws.send_str(msg)
+            except: #ConnectionResetError ??
+                pass        
+
+    async def onNewRound(self, state):
+        d = {}
+        d['round_number'] = state.round.round_number
+        d['group_count'] = len(state.round.groups)
+        d['window_time'] = state.round.windowTime
+        d['task'] = {
+        'short_code': state.round.short_code,
+        'short_name': state.round.short_name,
+        'name': state.round.task_name,
+        'description': state.round.task_description,
+        }
+        msg = json.dumps({"type": "groupData", "data": d} )
+        for ws in list(self.clients):
+            #self.logger.debug(f"Sending to client: {msg}")
+            try: 
+                await ws.send_str(msg)
+            except: #ConnectionResetError ??
+                pass        

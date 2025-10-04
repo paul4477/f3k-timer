@@ -33,7 +33,7 @@ class Section:
         #self.audio_times[self.sectionTime - 2] = audio_library.effect_countdown_beeps_end
 
     def __repr__(self):
-        return f"Section {self.get_description()} of {self.group} of {self.round} {int(self.sectionTime):3d}secs"
+        return f"Section {self.get_description()} of Group:{self.group.group_number} of Round:{self.round.round_number} {int(self.sectionTime):3d}secs"
     ## If there are multiple instances of a section class
     ## in a group then lets provide the index - e.g. all up, no-fly, work, landing all can have an index
     def get_flight_number(self):

@@ -17,7 +17,7 @@ function connectWebSocket() {
     try {
       const data = JSON.parse(event.data);
       if (data && data.type) {
-        handleMessageByType(data.type, data.payload);
+        handleMessageByType(data.type, data.data);
       } else {
         console.warn('Received message without type:', data);
       }
