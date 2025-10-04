@@ -264,6 +264,7 @@ class Group:
         self.sections = []
         self.populate_sections()
         self.announce_sound = None
+        self.announce_sound_generating = False
 
     def __iter__(self):
         return (section for section in self.sections)
@@ -287,7 +288,7 @@ class Group:
 
         ## Passing len(self.sections) so that the section knows its own index and we
         ## can use it to reference forward and back.
-        self.sections.append(AnnounceSection(0, self, self.round, len(self.sections), self.event_config))
+        self.sections.append(AnnounceSection(999, self, self.round, len(self.sections), self.event_config))
         if prep_time > 0:
             self.sections.append(PrepSection(prep_time, self, self.round, len(self.sections), self.event_config))
         if test_time > 0:
@@ -335,7 +336,7 @@ class AllUpGroup(Group):
             land_time = self.event_config.get('land_time', 30)
             gap_time = self.event_config.get('gap_time', 120)
 
-        self.sections.append(AnnounceSection(0, self, self.round, len(self.sections), self.event_config))
+        self.sections.append(AnnounceSection(999, self, self.round, len(self.sections), self.event_config))
         if prep_time > 0:
             self.sections.append(PrepSection(prep_time, self, self.round, len(self.sections), self.event_config))
         if test_time > 0:
