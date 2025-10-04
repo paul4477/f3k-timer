@@ -228,16 +228,27 @@ class GapSection(Section):
         # Reset to clear other values
         self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_group_sep']}
 
-class AnnounceSection(GapSection):
+class AnnounceSection(Section):
     def get_description(self):
         return "Announcement in progress"
-
+    def populate_audio_times(self):
+        self.say_seconds = []
+        # Reset to clear other values
+        self.audio_times = {}
+        
 class ShowTimeSection(GapSection):
     def get_serial_code(self):
         return "DT"
     def get_description(self):
         return "Actual Time HH:MM"
-    
+    def populate_audio_times(self):
+        ## COuld we add the logic here for "Starting in X minutes annoucements?"
+        
+        self.say_seconds = []
+        # Reset to clear other values
+        self.audio_times = {}
+
+
 class Group:
     """
     Represents a group within a round. Can generate its timing sections (prep, no-fly, work, land, gap).
