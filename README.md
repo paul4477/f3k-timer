@@ -1,17 +1,18 @@
-# A Python (pygame) based F3K Timer
+# A Python based F3K Timer
+
+Using pygame for sound, aiohttp for web interface with two way comms (control and update).
+Plugins for serial comms (Pandora base station) and ESPNow (custom esp32 based timing board).
 
 ```
-pip install requests pygame aiohttp
-# Make sure required sound device is visible
-cat /proc/asound/cards
 
-# Turn up master volume:
-amixer sset "Master" 65536
+> git clone -b develop https://github.com/paul4477/f3k-timer.git
 
-# Allow bind to port 80:
-sudo setcap 'cap_net_bind_service=+ep cap_net_raw=+ep' <path to python>
+> cd f3k-timer
+> ./setup.py
 
-f3k_timer.py [-h] [--prep-minutes PREP_MINUTES] [--group-separation-minutes GROUP_SEPARATION_MINUTES] eventid
+venv-f3k-timer/bin/python f3k-timer.py
+
+ -- Then simply access http://<ip_of_machine> to control event loading, running
 
 ## For ESPNow you may need nexmon to allow your wlan interface to enter monitor mode.
 https://pimylifeup.com/raspberry-pi-nexmon/
