@@ -35,6 +35,8 @@ class Section:
     def __repr__(self):
         return f"Section {self.get_description()} of {self.group} of {self.round} {int(self.sectionTime):3d}secs"
     
+    def get_flight_number(self):
+        return 1
     def get_next_section(self):
         try: return self.group.sections[self.section_index+1]
         except IndexError: 
@@ -158,6 +160,12 @@ class AllUpNoFlySection(NoFlySection):
 class WorkingSection(Section):
     def is_no_fly(self):
         return False
+    def get_flight_number(self):
+        try: 
+            return list((x for x in self.group.sections if isinstance(x, WorkingSection))).index(self) + 1
+        except ValueError:
+            return 1
+        
     def get_serial_code(self):
         return "WT"
     def get_description(self):

@@ -27,9 +27,11 @@ class Pandora(PluginBase):
             g = state.group.group_number
             s = state.section.get_serial_code()
             d = state.round.short_name
+            au_f = state.section.get_flight_number() or '1'
+            # P|01|02|1
             output = f"P|{r:02}"\
                     f"|{g:02}"\
-                      f"|1"\
+                      f"|{au_f}"\
                       f"|{d}\r\n" \
                       f"R{r:02}" \
                       f"G{g:02}" \
