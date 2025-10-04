@@ -22,9 +22,9 @@ python -m venv $venv_name
 
 if [ -d $venv_name/bin ];
 then
-  BIN_DIR=$venv_name/bin # Linux
+  BIN_DIR=`realpath $venv_name/bin` # Linux
 else
-  BIN_DIR=$venv_name/Scripts # Windows
+  BIN_DIR=`realpath $venv_name/Scripts` # Windows
 fi
 echo
 echo Updating Pip...
@@ -39,11 +39,10 @@ echo Downloading voice data:
 $BIN_DIR/python -m piper.download_voices en_US-lessac-medium
 echo
 cd assets/sounds/
-
 ## Run tone generation. Includes setting up own venv
-source generate_tones.sh
+./generate_tones.sh
 ## Run speach generation (uses main venv where Piper is installed.)
-../../$BIN_DIR/python generate_language.py
+$BIN_DIR/python generate_language.py
 cd -
 
 echo
