@@ -1,6 +1,6 @@
 import logging
 import asyncio
-
+import os
 import wave
 from io import BytesIO
 
@@ -13,14 +13,13 @@ syn_config = SynthesisConfig(
     noise_w_scale=0,  # more speaking variation
     normalize_audio=True, # use raw audio from voice
 )
-#voice = PiperVoice.load('en_GB-northern_english_male-medium.onnx',
-#          config_path='en_GB-northern_english_male-medium.onnx.json')
 
 class Voice:
         def __init__(self, voice_name, config):
               self.voice_name = voice_name
               self.syn_config = config
-              self._voice = PiperVoice.load(f'{voice_name}.onnx', config_path=f'{voice_name}.onnx.json')
+              self._voice = PiperVoice.load(os.path.join("assets", "voice_data",f'{voice_name}.onnx'),
+                                             config_path=os.path.join("assets", "voice_data",f'{voice_name}.onnx.json'))
 
         def generate_audio_bytes(self, text_to_speech, paragraph_silence=1.2):
               silence_int16_bytes = bytes(

@@ -65,10 +65,10 @@ def get_args():
         help="Voice (as downloaded with Piper module). Default: en_US-lessac-medium"
     )
     args = parser.parse_args()
-    args.voice_path=os.path.join("..","..",f"{args.voice_file}.onnx")
+    args.voice_path=os.path.join("..","..","assets","voice_data",f"{args.voice_file}.onnx")
 
     if not os.path.isfile(args.voice_path):
-        print(f"Error: Voice file 'f3k-timer/{args.voice_file}.onnx' does not exist.\n"\
+        print(f"Error: Voice file 'f3k-timer/assets/voice_data/{args.voice_file}.onnx' does not exist.\n"\
               "This should have been downloaded as part of running setup.sh.\n"\
                 f"Use 'python -m piper.download_voices {args.voice_file}' to download.")
         return None
