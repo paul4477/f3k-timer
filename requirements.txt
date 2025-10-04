@@ -1,11 +1,12 @@
 aiohappyeyeballs==2.6.1
 aiohttp==3.12.15
+aiohttp-sse==2.2.0
 aiosignal==1.4.0
 attrs==25.3.0
 certifi==2025.8.3
 charset-normalizer==3.4.3
 coloredlogs==15.0.1
-flatbuffers==20181003210633
+flatbuffers==25.9.23
 frozenlist==1.7.0
 humanfriendly==10.0
 idna==3.10
