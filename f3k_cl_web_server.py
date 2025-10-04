@@ -244,7 +244,7 @@ class WebFrontend(PluginBase):
         'name': state.round.task_name,
         'description': state.round.task_description,
         }
-        msg = json.dumps({"type": "groupData", "data": d} )
+        msg = json.dumps({"type": "roundData", "data": d} )
         for ws in list(self.clients):
             #self.logger.debug(f"Sending to client: {msg}")
             try: 
