@@ -45,10 +45,10 @@ other_announcements = {
   "vx_30s_to_working_time": "30 seconds to start of working time",
   "vx_20s_to_working_time": "20 seconds to start of working time",
 
-  "vx_3m_window": "3 minute working window.",
-  "vx_7m_window": "7 minute working window.",
-  "vx_10m_window": "10 minute working window.",
-  "vx_15m_window": "15 minute working window.",
+  "vx_3m_window": "3 minute working time.",
+  "vx_7m_window": "7 minute working time.",
+  "vx_10m_window": "10 minute working time.",
+  "vx_15m_window": "15 minute working time.",
 
   "vx_30s_landing_window": "30 second landing window",
   "vx_round": "Round: ",
