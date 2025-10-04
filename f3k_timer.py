@@ -26,7 +26,6 @@ from f3k_cl_event_engine import EventEngine, Clock
 async def main():
     
     
-
     events = EventEngine()
 
     voice_name = 'en_US-lessac-medium'
