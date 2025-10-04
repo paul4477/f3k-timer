@@ -25,10 +25,11 @@ from f3k_cl_event_engine import EventEngine, Clock
 
 async def main():
     
-    voice_name = 'en_US-lessac-medium'
-    voice = f3k_cl_rtvoice.Voice(voice_name, events)
     
     events = EventEngine()
+
+    voice_name = 'en_US-lessac-medium'
+    voice = f3k_cl_rtvoice.Voice(voice_name, events)
 
     web_server = f3k_cl_web_server.WebFrontend(events)
     await web_server.startup()
