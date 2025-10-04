@@ -26,6 +26,9 @@ then
 else
   BIN_DIR=$venv_name/Scripts # Windows
 fi
+echo
+echo Updating Pip...
+echo
 $BIN_DIR/pip install --upgrade pip
 echo
 echo Installing required modules...
