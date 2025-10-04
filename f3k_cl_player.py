@@ -130,6 +130,7 @@ class State:
                     'round_num': self.round.round_number if self.round else '-',
                     'group_num': self.group.group_number if self.group else '-',
                     'group_let': self.group.group_letter if self.group else '-',
+                    'flight_num': self.section.get_flight_number() if self.section else '1',
                     'section': self.section.get_description(),
                     'task_name': self.round.task_name if self.round else '--------',}
         else:
@@ -141,6 +142,7 @@ class State:
                     'round_num': '-',
                     'group_num': '-',
                     'group_let': '-',
+                    'flight_num': '-',
                     'section': 'Actual Time HH:MM',
                     'task_name': '--------',}
     

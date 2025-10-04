@@ -206,6 +206,14 @@
         document.getElementById('bigTime').textContent = data.time_str;
         document.getElementById('roundNum').textContent = data.round_num;
         document.getElementById('groupLetter').textContent = data.group_let;
+            // Check flight_num and append if needed
+        if (
+            "flight_num" in data &&
+            !isNaN(parseInt(data.flight_num)) &&
+            parseInt(data.flight_num) !== 1
+        ) {
+            document.getElementById('groupLetter').textContent += ` (${data.flight_num})`;
+        }
         document.getElementById('roundDescription').textContent = data.task_name;
         document.getElementById('sectionDescription').textContent = data.section;
 
