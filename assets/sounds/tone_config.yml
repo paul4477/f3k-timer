@@ -87,7 +87,7 @@ beeps:
       type: sqsaw # saw, square or sqsaw
       pitch_offset: 5 # hz only applicable for sqsaw type
   - silence: &inverse_silence
-      duration: 750
+      duration: 900
   - beep: *short_beep
   - silence: *inverse_silence
   - beep: *short_beep
