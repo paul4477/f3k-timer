@@ -8,30 +8,47 @@ fn_exists() {
 }
 
 ## Check if we are in a venv already and deactivate it
+## to avoid confusion.
 if ( fn_exists deactivate )
 then
 	deactivate
 fi
 
-$venv_name=venv-f3k-timer
+venv_name=venv-f3k-timer
+default_voice=en_US-lessac-medium
 
 ## create python venv
 python -m venv $venv_name
-source $venv_name/bin/activate
+
+if [ -d $venv_name/bin ];
+then
+  BIN_DIR=$venv_name/bin # Linux
+else
+  BIN_DIR=$venv_name/Scripts # Windows
+fi
+$BIN_DIR/pip install --upgrade pip
 echo
 echo Installing required modules...
 echo
-$venv_name/bin/pip install -r requirements.txt
+$BIN_DIR/pip install -r requirements.txt
+echo
+echo Downloading voice data: 
+$BIN_DIR/python -m piper.download_voices en_US-lessac-medium
+echo
+cd assets/sounds/
 
-echo TO DO! Voice downloads, sound generation etc
-echo TO DO make venv for beep generation and generate them
+## Run tone generation. Includes setting up own venv
+source generate_tones.sh
+## Run speach generation (uses main venv where Piper is installed.)
+../../$BIN_DIR/python generate_language.py
+cd -
 
 echo
 echo
 echo Setting network capabilites for ESPNow access...
 echo
-sudo setcap 'cap_net_bind_service=+ep cap_net_raw=+ep' `readlink -f $venv_name/bin/python`
-sudo getcap `readlink -f $venv_name/bin/python`
+sudo setcap 'cap_net_bind_service=+ep cap_net_raw=+ep' `readlink -f $BIN_DIR/python`
+sudo getcap `readlink -f $BIN_DIR/bin/python`
 echo
 echo Setting Master volume...
 echo
@@ -61,4 +78,5 @@ chmod u+x start.sh
 echo
 echo Done.
 echo
-with 
+
+### Add systemd service

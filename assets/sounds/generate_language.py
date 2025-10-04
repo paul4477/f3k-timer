@@ -1,46 +1,25 @@
 import sys
 import wave
-from piper.voice import PiperVoice,SynthesisConfig
+import os.path
 sys.path.insert(0, "../../")
-#from f3k_cl_competition import f3k_task_timing_data
 
-voice_file = "en_GB-northern_english_male-medium"
-#voice_file = "en_US-lessac-medium"
-#voice = PiperVoice.load("../../en_US-lessac-medium.onnx")
-
-voice = PiperVoice.load(f"../../{voice_file}.onnx")
+from piper.voice import PiperVoice,SynthesisConfig
 
 syn_config = SynthesisConfig(
-    volume=1,  # half as loud
-    length_scale=1.2,  # twice as slow
-    noise_scale=0.2,  # more audio variation
-    noise_w_scale=0,  # more speaking variation
-    normalize_audio=True, # use raw audio from voice
+    volume=1,  
+    length_scale=1.2,  
+    noise_scale=0.2,  
+    noise_w_scale=0,  
+    normalize_audio=True, 
 )
 
-language_dir = voice_file.split('_')[0]
-voice_dir = voice_file[3:]
-import os.path
-
-def generate_sound_file(filename, text_to_speak):
-
+def generate_sound_file(filename, text_to_speak, voice):
   full_dir = os.path.join(language_dir, voice_dir)
   print (os.path.join(full_dir, filename)+".wav <== "+text_to_speak)
   if not os.path.exists(full_dir):
     os.makedirs(full_dir, exist_ok=True)
   with wave.open(os.path.join(full_dir, filename+".wav"), "wb") as wav_file:
     voice.synthesize_wav(text_to_speak, wav_file, syn_config=syn_config)
-
-
-
-from task_data import f3k_task_timing_data
-for item in f3k_task_timing_data:
-  generate_sound_file(item, f3k_task_timing_data[item]['description'])
-
-time_sounds = list(range(21)) + [30,45]
-print(time_sounds)
-for t in time_sounds:
-  generate_sound_file(f"{t:04d}", str(t))
 
 other_announcements = {
   'minute0': 'minute',
@@ -77,9 +56,48 @@ other_announcements = {
 
 }
 
-for item in other_announcements:
-  generate_sound_file(item, other_announcements[item])
+import argparse
+def get_args():
+    parser = argparse.ArgumentParser(description="Command line utility for generating langauage audio.")
+    parser.add_argument(
+        "--voice-file",
+        default="en_US-lessac-medium",
+        help="Voice (as downloaded with Piper module). Default: en_US-lessac-medium"
+    )
+    args = parser.parse_args()
+    args.voice_path=os.path.join("..","..",f"{args.voice_file}.onnx")
 
+    if not os.path.isfile(args.voice_path):
+        print(f"Error: Voice file 'f3k-timer/{args.voice_file}.onnx' does not exist.\n"\
+              "This should have been downloaded as part of running setup.sh.\n"\
+                f"Use 'python -m piper.download_voices {args.voice_file}' to download.")
+        return None
 
+    try:
+        args.voice = PiperVoice.load(args.voice_path)
+    except Exception as e:
+        print(f"Error creating voice object: {e}")
+        return None
 
+    return args
 
+if __name__ == "__main__":
+  args = get_args()
+  if not args: sys.exit(1)
+
+  language_dir = args.voice_file.split('_')[0]
+  voice_dir = args.voice_file[3:]
+
+  # Generate task descriptions
+  from task_data import f3k_task_timing_data
+  for item in f3k_task_timing_data:
+    generate_sound_file(item, f3k_task_timing_data[item]['description'], args.voice)
+
+  # Generate integers used for spoken times
+  time_sounds = list(range(21)) + [30,45]
+  for t in time_sounds:
+    generate_sound_file(f"{t:04d}", str(t), args.voice)
+
+  # Other round announcements etc
+  for item in other_announcements:
+    generate_sound_file(item, other_announcements[item], args.voice)
