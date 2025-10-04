@@ -10,6 +10,7 @@ pygame.mixer.init(frequency=44100, size=-16, channels=1)
 import f3k_cl_web_server
 import f3k_cl_audio
 import f3k_cl_player
+import f3k_cl_rtvoice
 try: 
     import plugin_pandora
 except ImportError:
@@ -27,6 +28,9 @@ async def main():
     
 
     events = EventEngine()
+
+    voice_name = 'en_US-lessac-medium'
+    voice = f3k_cl_rtvoice.Voice(voice_name, events)
 
     web_server = f3k_cl_web_server.WebFrontend(events)
     await web_server.startup()
