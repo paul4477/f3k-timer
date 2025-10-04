@@ -23,6 +23,8 @@ class WebFrontend(PluginBase):
         self.event_data_loaded = False
         self.logger = logging.getLogger(self.__class__.__name__)
         self.last_update = 0
+        self.groupDict = {}
+        self.roundDict = {}
         #self.register_more_handlers()
         # Add route for default page
         
@@ -32,15 +34,36 @@ class WebFrontend(PluginBase):
                 web.get("/", self.handle_default_page),
                 
                 web.get("/run", self.handle_run_page),
+                web.get("/view", self.handle_view_page),
+
                 web.get("/reset", self.handle_reset),
                 web.post("/timesync/", self.handle_timesync),
                 web.get("/ws/", self.ws_handler),
                 web.post("/load_event", self.handle_load_event),
+
+                web.get("/groupData", self.handle_groupData),
+                web.get("/roundData", self.handle_roundData),
             ]
         )
 
     #def register_more_handlers(self):
     #    pass
+
+    async def handle_groupData(self, request):
+        # Serve the json data
+        body =json.dumps(self.groupDict)
+        return web.Response(
+            content_type="application/json", body=body,
+        )    
+     
+
+
+    async def handle_roundData(self, request):
+        # Serve the json data
+        body =json.dumps(self.roundDict)
+        return web.Response(
+            content_type="application/json", body=body,
+        )    
 
     async def handle_reset(self, request):
         # Serve the static HTML file
@@ -49,7 +72,9 @@ class WebFrontend(PluginBase):
         self.events.trigger(f"player.stop")
         
         raise web.HTTPFound('/')
-        
+
+
+
 
     async def handle_default_page(self, request):
         self.logger.info(f"Serving default, {self.event_data_loaded}")
@@ -69,6 +94,19 @@ class WebFrontend(PluginBase):
         self.logger.info(f"Serving run, {self.event_data_loaded}")
         if self.event_data_loaded:# Serve the static HTML file
             file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
+            try:
+                with open(file_path, "r", encoding="utf-8") as f:
+                    content = f.read()
+                return web.Response(text=content, content_type="text/html")
+            except FileNotFoundError:
+                return web.Response(status=404, text="Run page not found")
+        else:
+            raise web.HTTPFound('/')
+
+    async def handle_view_page(self, request):
+        self.logger.info(f"Serving run, {self.event_data_loaded}")
+        if self.event_data_loaded:# Serve the static HTML file
+            file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_viewer.html")
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
@@ -224,7 +262,7 @@ class WebFrontend(PluginBase):
             d['pilots'].append(state.player.pilots[pid].name)
         d['group_number'] = state.group.group_number
         d['group_letter'] = state.group.group_letter
-
+        self.groupDict = d
         msg = json.dumps({"type": "groupData", "data": d} )
         for ws in list(self.clients):
             #self.logger.debug(f"Sending to client: {msg}")
@@ -232,6 +270,7 @@ class WebFrontend(PluginBase):
                 await ws.send_str(msg)
             except: #ConnectionResetError ??
                 pass        
+        
 
     async def onNewRound(self, state):
         d = {}
@@ -244,6 +283,7 @@ class WebFrontend(PluginBase):
         'name': state.round.task_name,
         'description': state.round.task_description,
         }
+        self.roundDict = d
         msg = json.dumps({"type": "roundData", "data": d} )
         for ws in list(self.clients):
             #self.logger.debug(f"Sending to client: {msg}")
@@ -251,3 +291,4 @@ class WebFrontend(PluginBase):
                 await ws.send_str(msg)
             except: #ConnectionResetError ??
                 pass        
+        await self.onNewGroup(state)

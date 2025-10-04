@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
+    crossorigin="anonymous"></script>
+  <script src="/assets/js/event_viewer.js"></script>
+  <title>Event Search</title>
+  <style>
+    /* small UX nicety */
+    #event-list li {
+      cursor: pointer;
+    }
+
+    @font-face {
+      font-family: lcd;
+      src: url(/assets/font/7segment.woff);
+    }
+
+    button {
+      touch-action: manipulation;
+    }
+  </style>
+</head>
+
+<body class="font-monospace lh-sm" onload="onBodyLoad()">
+  <!-- On start, make button inactive. Pausing makes it active again.-->
+  <!-- Add confirm for reset and quit-->
+  <div class="container">
+    <div id="roundNumRow" class="row bg-danger text-white fw-bold fs-2">
+      <div class="col-3">
+        Round:
+      </div>
+      <div id="roundNum" class="col-2">
+        -
+      </div>
+      <div class="col-3">
+        Group:
+      </div>
+      <div id="groupLetter" class="col-4">
+        -
+      </div>
+    </div>
+    <div id="roundNameRow" class="row bg-danger text-white fs-6 text-center">
+      <div id="roundDescription" class="col">
+        --------
+      </div>
+    </div>
+    <div id="sectionRow" class="row bg-danger text-white fw-bold fs-2 text-center">
+      <div id="sectionDescription" class="col">
+        -----
+      </div>
+    </div>
+    <div class="row">
+      <div id="bigTime" class="col text-center fst-normal" style="font-size: 30vw; font-family: lcd">--:--</div>
+    </div>
+
+
+    <div id="controls" class="row">
+
+    </div>
+
+    <!-- Pilot List -->
+    <div class="row my-4">
+      <div class="col">
+        <ul id="pilotList" class="list-group list-group-flush text-center font-size: 30vw;">
+          <!-- Pilot list items will be injected here by JS -->
+        </ul>
+      </div>
+    </div>
+    <!-- End Pilot List -->
+
+  </div>
+</body>
+
+</html>

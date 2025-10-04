@@ -48,73 +48,34 @@ function scheduleReconnect() {
 function onBodyLoad() {
   connectWebSocket();
   // Button click handler
-  document.getElementById('sendBtn').onclick = function () {
-    const msg = document.getElementById('wsTXMessage').value;
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(msg);
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
 
-  // Quit button click handler
-  document.getElementById('quitBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"quit"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-  // Start button click handler
-  document.getElementById('startBtn').onclick = function (e) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"start"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-    // Disable the button
-    e.target.closest("button").disabled = true;
-  };
-  // Pause button click handler
-  document.getElementById('pauseBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"pause"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-  // FWD button click handler
-  document.getElementById('skip_fwdBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_fwd"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-  // Next button click handler
-  document.getElementById('skip_nextBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_next"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-  // REW button click handler
-  document.getElementById('skip_backBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_back"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-  // Back button click handler
-  document.getElementById('skip_previousBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_previous"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
+  // Fetch /groupData once on page load
+  fetch('/groupData')
+    .then(response => {
+      if (!response.ok) throw new Error('Network response was not ok');
+      return response.json();
+    })
+    .then(data => {
+      handlegroupData(data);
+    })
+    .catch(error => {
+      console.warn('Failed to fetch /groupData on load:', error);
+    });
+
+  // Periodically poll /groupData every 5 seconds
+  setInterval(() => {
+    fetch('/groupData')
+      .then(response => {
+        if (!response.ok) throw new Error('Network response was not ok');
+        return response.json();
+      })
+      .then(data => {
+        handlegroupData(data);
+      })
+      .catch(error => {
+        console.warn('Failed to fetch /groupData:', error);
+      });
+  }, 5000);
 }
 
 function handleMessageByType(type, data) {
@@ -125,13 +86,17 @@ function handleMessageByType(type, data) {
     case 'groupData':
       handlegroupData(data);
       break;
+    case 'roundData':
+      handleroundData(data);
+      break;
+
     default:
       console.warn('Unhandled message type:', type, data);
   }
 }
 
 function handleTime(data) {
-  document.getElementById('wsRXMessage').value = JSON.stringify(data);
+  //document.getElementById('wsRXMessage').value = JSON.stringify(data);
   document.getElementById('bigTime').textContent = data.time_str;
   document.getElementById('roundNum').textContent = data.round_num;
   document.getElementById('groupLetter').textContent = data.group_let;
@@ -178,6 +143,19 @@ function handleTime(data) {
 
 function handlegroupData(data) {
   console.log(JSON.stringify(data));
+  // Expecting data.pilots to be an array of pilot objects or names
+  const pilots = data.pilots || [];
+  const pilotList = document.getElementById('pilotList');
+  if (!pilotList) return;
+  // Clear previous items
+  pilotList.innerHTML = '';
+  pilots.forEach((pilot) => {
+    const pilotName = typeof pilot === 'string' ? pilot : pilot.name || 'Unknown';
+    const li = document.createElement('li');
+    li.className = 'list-group-item text-center fw-bold fs-2';
+    li.textContent = pilotName;
+    pilotList.appendChild(li);
+  });
 }
 function handleroundData(data) {
   console.log(JSON.stringify(data));
