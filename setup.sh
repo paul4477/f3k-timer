@@ -36,7 +36,9 @@ echo
 $BIN_DIR/pip install -r requirements.txt
 echo
 echo Downloading voice data: 
+cd assets/voice_data/
 $BIN_DIR/python -m piper.download_voices en_US-lessac-medium
+cd -
 echo
 cd assets/sounds/
 ## Run tone generation. Includes setting up own venv
