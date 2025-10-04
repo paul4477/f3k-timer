@@ -160,7 +160,11 @@ class AllUpNoFlySection(NoFlySection):
         #self.pre_announce_times.pop(-60)
         #self.pre_announce_times.pop(-30)
         #self.pre_announce_times.pop(-20)
-
+    def get_flight_number(self):
+        try: 
+            return list((x for x in self.group.sections if (isinstance(x, AllUpNoFlySection) or isinstance(x, NoFlySection)))).index(self) + 1
+        except ValueError:
+            return 1
 class WorkingSection(Section):
     def is_no_fly(self):
         return False
