@@ -1,0 +1,30 @@
+---
+name: main
+prep_time: 60
+use_strict_test_time: False
+group_separation_time: 5
+voice: en_GB-northern_english_male-medium
+---
+name: web
+port: 80 # Port to run the web server on
+---
+name: Pandora
+module: plugin_pandora
+object_name: Pandora
+device: /dev/ttyUSB0
+baud: 19200
+bits: 8
+parity: N
+stop: 1
+---
+name: scoreboard
+module: plugin_espnow
+object_name: ESPNow
+format: json
+rate_limit: 6 # updates per second
+device: wlan1 # The device to use for sending the scoreboard updates
+broadcast: True # If True then sends to all devices, if False then only to those in the peers list
+#  peers: # List of MAC addresses of the scoreboard devices to send updates to
+#    - 24:0A:C4:00:00:01
+#    - 24:0A:C4:00:00:02
+

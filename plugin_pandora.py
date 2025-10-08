@@ -2,9 +2,14 @@ import serial
 from plugin_base import PluginBase
 
 class Pandora(PluginBase):
-    def __init__(self, events):
-        super().__init__(events)
-        self.device = "/dev/ttyUSB0"
+    def __init__(self, events, config):
+        super().__init__(events, config)
+        self.device = self.config.get('device', '/dev/ttyUSB0') # Default device
+        self.baud = self.config.get('baud', 19200) # Default baudrate
+        self.bits = self.config.get('bits', 8) # Default data bits
+        self.parity = serial.PARITY_NONE #self.config.get('parity', 'N') # Default parity
+        self.stop = serial.STOPBITS_ONE #self.config.get('stop', 1) # Default stop bits
+        
         self.port = None
         self.init_serial()
     
@@ -15,7 +20,12 @@ class Pandora(PluginBase):
 
     def init_serial(self):
         try:
-            self.port = serial.Serial('/dev/ttyUSB0', 19200, timeout=None)
+            self.port = serial.Serial(self.device, 
+                                      baudrate=self.baud, 
+                                      bytesize=self.bits, 
+                                      parity=self.parity, 
+                                      stopbits=self.stop, 
+                                      timeout=None)
             self.logger.debug(f"Serial port opened {self.device}")
             self.write(b"R00G00T0000PT\r")
         except:

@@ -63,15 +63,15 @@ class Section:
         return "Base class, shouldn't see this one."  
     def set_audio_time(self, t, sound):
         try: self.say_seconds.remove(t)
-        except: pass
+        except ValueError: pass
         self.audio_times[t] = sound
 
 class PrepSection(Section):
     def is_no_fly(self):
         # Note which way round the booleans are here!
-        # Config is CAN fly in prep.
+        # Config is "be strict", so True means no-fly here
         # This method is "is this a no fly section?"
-        return not self.event_config.get('can_fly_in_prep', True)
+        return self.event_config.get('use_strict_test_time', False)
     def get_serial_code(self):
         return "PT"
     def get_description(self):
@@ -87,14 +87,15 @@ class PrepSection(Section):
                 self.audio_times[4] = audio_library.effect_countdown_beeps
             else:
                 self.audio_times[4] = audio_library.effect_countdown_beeps_end
-               
-        except IndexError:
+
+            self.say_seconds.remove(self.sectionTime - 120)       # For announcement (below)
+        except ValueError:
             pass
         
         self.audio_times[self.sectionTime - 1] = audio_library.language_audio['vx_prep_start']
         self.audio_times[self.sectionTime - 3] = audio_library.task_audio[self.round.short_code]
         self.audio_times[self.sectionTime - 120] = self.announcement
-        self.say_seconds.remove(self.sectionTime - 120)
+        
 
     def announcement(self):
         return self.group.announce_sound
@@ -108,12 +109,15 @@ class TestSection(Section):
         return "Test Flying Time"  
     def populate_audio_times(self):
 
-        self.say_seconds.remove(16)
-        self.say_seconds.remove(17)
-        self.say_seconds.remove(18)
-        self.say_seconds.remove(19)
-        self.say_seconds.remove(20)
-        self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
+        try:
+            self.say_seconds.remove(16)
+            self.say_seconds.remove(17)
+            self.say_seconds.remove(18)
+            self.say_seconds.remove(19)
+            self.say_seconds.remove(20)
+            self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
+        except ValueError:
+            pass
         self.audio_times[4] = audio_library.effect_countdown_beeps_end
         self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_test_time']
       
@@ -131,9 +135,12 @@ class NoFlySection(Section):
         return "No Fly Time"    
     def populate_audio_times(self):
 
-        self.say_seconds.remove(19)
-        self.say_seconds.remove(20)
-        self.say_seconds.remove(30)
+        try:
+            self.say_seconds.remove(19)
+            self.say_seconds.remove(20)
+            self.say_seconds.remove(30)
+        except ValueError:
+            pass
 
         self.say_seconds.append(45)               
         self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_no_flying']    
@@ -173,17 +180,21 @@ class WorkingSection(Section):
     def get_description(self):
         return "Working Time"    
     def populate_audio_times(self):
-        self.say_seconds.remove(19)
-        self.say_seconds.remove(18)
-        self.say_seconds.remove(17)
-        self.say_seconds.remove(16)
-        self.say_seconds.remove(14)
-        self.say_seconds.remove(13)
-        self.say_seconds.remove(12)
-        self.say_seconds.remove(11)
+        try:
+            self.say_seconds.remove(19)
+            self.say_seconds.remove(18)
+            self.say_seconds.remove(17)
+            self.say_seconds.remove(16)
+            self.say_seconds.remove(14)
+            self.say_seconds.remove(13)
+            self.say_seconds.remove(12)
+            self.say_seconds.remove(11)
+        except ValueError:
+            pass
         match self.sectionTime:
             case 183:
-                self.say_seconds.remove(180)
+                try: self.say_seconds.remove(180)
+                except ValueError: pass
                 self.audio_times[self.sectionTime-4] = audio_library.language_audio['vx_3m_window']    
             case 420:
                 self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_7m_window']    
@@ -204,14 +215,17 @@ class LandingSection(Section):
     def get_description(self):
         return "Landing Window"    
     def populate_audio_times(self):
-        self.say_seconds.remove(19)
-        self.say_seconds.remove(18)
-        self.say_seconds.remove(17)
-        self.say_seconds.remove(16)
-        self.say_seconds.remove(14)
-        self.say_seconds.remove(13)
-        self.say_seconds.remove(12)
-        self.say_seconds.remove(11)
+        try:
+            self.say_seconds.remove(19)
+            self.say_seconds.remove(18)
+            self.say_seconds.remove(17)
+            self.say_seconds.remove(16)
+            self.say_seconds.remove(14)
+            self.say_seconds.remove(13)
+            self.say_seconds.remove(12)
+            self.say_seconds.remove(11)
+        except ValueError:
+            pass
         #self.say_seconds.remove(20)
         #self.say_seconds.remove(30)
         #self.say_seconds.remove(60)
@@ -254,13 +268,15 @@ class Group:
     Represents a group within a round. Can generate its timing sections (prep, no-fly, work, land, gap).
     """
     def __init__(self, group_number, group_letter, round_obj, pilot_list, event_config=None):
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.group_number = group_number
         self.group_letter = group_letter
         self.round = round_obj  # Reference to parent Round
         self.pilots = pilot_list  # List of pilot IDs in this group
+        self.logger.debug(f"Group got config {event_config}")
         self.event_config = event_config or {}
         # Example: self.sections = list(self.sections_iter())
-        self.logger = logging.getLogger(self.__class__.__name__)
+        
         self.sections = []
         self.populate_sections()
         self.announce_sound = None
@@ -270,21 +286,12 @@ class Group:
         return (section for section in self.sections)
     
     def populate_sections(self):
-        # Example timings, can be customized via event_config or round/task type
-        if SHORT_TIME_DEBUG:
-            prep_time = self.event_config.get('prep_time', 10)
-            test_time = self.event_config.get('test_time', 0)
-            no_fly_time = self.event_config.get('no_fly_time', 6)
-            work_time = getattr(self.round, 'windowTime', 600)
-            land_time = self.event_config.get('land_time', 5)
-            gap_time = self.event_config.get('gap_time', 2)
-        else:
-            prep_time = self.event_config.get('prep_time', 300)
-            test_time = self.event_config.get('test_time', 0)
-            no_fly_time = self.event_config.get('no_fly_time', 60)
-            work_time = getattr(self.round, 'windowTime', 600)
-            land_time = self.event_config.get('land_time', 30)
-            gap_time = self.event_config.get('gap_time', 120)
+        prep_time = self.event_config.get('prep_time', 300)
+        test_time = self.event_config.get('test_time', 0)
+        no_fly_time = self.event_config.get('no_fly_time', 60)
+        work_time = getattr(self.round, 'windowTime', 600)
+        land_time = self.event_config.get('land_time', 30)
+        group_separation_time = self.event_config.get('group_separation_time', 120)
 
         ## Passing len(self.sections) so that the section knows its own index and we
         ## can use it to reference forward and back.
@@ -299,9 +306,9 @@ class Group:
             self.sections.append(WorkingSection(work_time, self, self.round, len(self.sections), self.event_config))
         if land_time > 0:
             self.sections.append(LandingSection(land_time, self, self.round, len(self.sections), self.event_config))
-        if gap_time > 0:
-            self.sections.append(GapSection(gap_time, self, self.round, len(self.sections), self.event_config))
-        self.logger.error(f"{self.sections}")
+        if group_separation_time > 0:
+            self.sections.append(GapSection(group_separation_time, self, self.round, len(self.sections), self.event_config))
+        self.logger.debug(f"{self.sections}")
     def __repr__(self):
         return f"Group {self.group_letter} of Round {self.round.round_number:2d}"
 
@@ -319,22 +326,12 @@ class AllUpGroup(Group):
         super().__init__(group_number, group_letter, round_obj, pilot_list, event_config=None)
 
     def populate_sections(self):
-        # Example timings, can be customized via event_config or round/task type
-        if SHORT_TIME_DEBUG:
-            prep_time = self.event_config.get('prep_time', 10)
-            test_time = self.event_config.get('test_time', 5)
-            no_fly_time = self.event_config.get('no_fly_time', 6)
-            work_time = getattr(self.round, 'windowTime', 15)
-            land_time = self.event_config.get('land_time', 5)
-            gap_time = self.event_config.get('gap_time', 2)
-        else:
-            
-            prep_time = self.event_config.get('prep_time', 300)
-            test_time = self.event_config.get('test_time', 0)
-            no_fly_time = self.event_config.get('no_fly_time', 60)
-            work_time = getattr(self.round, 'windowTime', 600)
-            land_time = self.event_config.get('land_time', 30)
-            gap_time = self.event_config.get('gap_time', 120)
+        prep_time = self.event_config.get('prep_time', 300)
+        test_time = self.event_config.get('test_time', 0)
+        no_fly_time = self.event_config.get('no_fly_time', 60)
+        work_time = getattr(self.round, 'windowTime', 600)
+        land_time = self.event_config.get('land_time', 30)
+        group_separation_time = self.event_config.get('group_separation_time', 120)
 
         self.sections.append(AnnounceSection(999, self, self.round, len(self.sections), self.event_config))
         if prep_time > 0:
@@ -351,8 +348,8 @@ class AllUpGroup(Group):
                 self.sections.append(WorkingSection(work_time, self, self.round, len(self.sections), self.event_config))
             if land_time > 0:
                 self.sections.append(LandingSection(land_time, self, self.round, len(self.sections), self.event_config))
-        if gap_time > 0:
-            self.sections.append(GapSection(gap_time, self, self.round, len(self.sections), self.event_config))
+        if group_separation_time > 0:
+            self.sections.append(GapSection(group_separation_time, self, self.round, len(self.sections), self.event_config))
 
 # Example usage:
 # round_obj = Round('f3k_a', 'A', 1)
@@ -361,24 +358,27 @@ class AllUpGroup(Group):
 #     print(section, duration)
 
 class Round():
-    def __init__(self, short_code, short_name, round_number):
+    def __init__(self, short_code, short_name, round_number, event_config=None):
+        self.logger = logging.getLogger(self.__class__.__name__)
         self.short_code = short_code
         self.round_number = round_number
         self.short_name = short_name
+        self.event_config = event_config or {}
         self.task_name = f3k_task_timing_data[self.short_code]['name']
         self.task_description = f3k_task_timing_data[self.short_code]['description']
         self.windowTime = f3k_task_timing_data[self.short_code]['windowTime']
         self.groups = []
-        self.logger = logging.getLogger(self.__class__.__name__)
 
     def __repr__(self):
         return f"Round {self.round_number:2d} {self.short_name}, {int(self.windowTime/60):2d}mins"
 
-    def populate_groups(self, standings):
+    def set_group_data(self, prelim_standings):
+        self.standings_data = prelim_standings
+    def __iter__(self):
         groups = {}
         letters= "-ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Adding '-' so index matches group number
         #print (self.round_number)
-        for pilot in standings:
+        for pilot in self.standings_data:
             pilot_id = pilot['pilot_id']
             
             # prelim_standings.standings[pilot.rounds[round.flights[flight_group]]]
@@ -397,21 +397,24 @@ class Round():
             group_number = letters.index(group_letter)
             # Make All Up group if this is an All Up round
             if self.short_code.startswith("f3k_c"):
-                self.groups.append( AllUpGroup(group_number, group_letter, self, groups[group_letter]) )
+                yield AllUpGroup(group_number, group_letter, self, groups[group_letter], self.event_config) 
             else:
-                self.groups.append( Group(group_number, group_letter, self, groups[group_letter]) )
+                yield Group(group_number, group_letter, self, groups[group_letter], self.event_config)
 
-    def __iter__(self):
-        return (group for group in self.groups)
+    #def __iter__(self):
+    #    return (group for group in self.groups)
 
-def make_rounds(json_data):
+def make_rounds(json_data, event_config=None):
   round_data = []
+  event_config = event_config or {}
   for round in json_data['event']['tasks']:
     r = Round(
        round['flight_type_code'], 
        round['flight_type_name_short'], 
-       round['round_number'],)
-    r.populate_groups(json_data['event']['prelim_standings']['standings'])
+       round['round_number'],
+       event_config=event_config
+    )
+    r.set_group_data(json_data['event']['prelim_standings']['standings'])
     round_data.append( r )
     ###draw[pilot.pilot_id][task.round_number] = pilot.rounds[parseInt(task.round_number) - 1].flights[0].flight_group
   return round_data   

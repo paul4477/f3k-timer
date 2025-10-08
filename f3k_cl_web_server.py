@@ -12,9 +12,9 @@ CORS_HEADERS = {
 }
 
 class WebFrontend(PluginBase):
-    def __init__(self, events, port=8080):
-        super().__init__(events)
-        self.port = port
+    def __init__(self, events, config):
+        super().__init__(events, config)
+        self.port = config.get('port', 8080)
         self.runner = None
         self.app = web.Application()
         self.ticks = 0
@@ -45,9 +45,6 @@ class WebFrontend(PluginBase):
                 web.get("/roundData", self.handle_roundData),
             ]
         )
-
-    #def register_more_handlers(self):
-    #    pass
 
     async def handle_groupData(self, request):
         # Serve the json data
@@ -214,7 +211,7 @@ class WebFrontend(PluginBase):
     async def startup(self):
         self.runner = web.AppRunner(self.app)
         await self.runner.setup()
-        site = web.TCPSite(self.runner, "0.0.0.0", 80)
+        site = web.TCPSite(self.runner, "0.0.0.0", self.port)
         await site.start()
  
     async def shutdown(self):

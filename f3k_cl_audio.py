@@ -7,8 +7,8 @@ import audio_library
 
 class AudioPlayer(PluginBase):
 
-    def __init__(self, events):
-        super().__init__(events)
+    def __init__(self, events, config):
+        super().__init__(events, config)
         self.register_more_handlers()
 
     def register_more_handlers(self):

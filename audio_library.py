@@ -1,10 +1,12 @@
 import pygame
 import logging
 
+from f3k_timer import main_config
 ## Voice spec - should get from config object
-language = "en"
-voice_name = "GB-northern_english_male-medium"
-voice_name = 'US-lessac-medium'
+
+print(main_config)
+voice_name = ''.join(main_config.get('voice', 'en_US-lessac-medium').split('_')[1:])
+language = main_config.get('voice', 'en_US-lessac-medium').split('_')[0]
 
 ## Count sounds
 effect_0 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0000.wav')

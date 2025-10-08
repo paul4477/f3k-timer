@@ -3,17 +3,22 @@ import struct
 from plugin_base import PluginBase
 
 class ESPNow(PluginBase):
-    def __init__(self, events):
-        super().__init__(events)
-        self.device = "wlan1"
+    def __init__(self, events, config):
+        super().__init__(events, config)
+        self.device = self.config.get('device', 'wlan0') # Default device
+        self.broadcast = self.config.get('broadcast', True) # Default to broadcast
+        self.format = self.config.get('format', 'json') # Default format json|struct
         self.port = None
         self.init_port()
-        self.rate_limit = 1/6
+        try: self.rate_limit = 1 / int(self.config.get('rate_limit', 1))
+        except ValueError: self.rate_limit = 1
         self.last_update = 0
     
     def write(self, bytes):
+        if not self.broadcast:
+            self.logger.warning("broadcast is off but not implemented")
         self.port.send("FF:FF:FF:FF:FF:FF", bytes)
-        #self.logger.debug(f"ESPNow broadcast: {repr(bytes)}")
+        ##self.logger.debug(f"ESPNow broadcast: {repr(bytes)}")
 
     def callback(self, from_mac, to_mac, msg):
         ## We're not listening for anything here.

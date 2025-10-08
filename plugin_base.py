@@ -2,12 +2,13 @@ import logging
 import time
 
 class PluginBase():
-    def __init__(self, events):
+    def __init__(self, events, config):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.events = events
         self.register_handlers()
         self.rate_limit = 1
         self._enabled = True
+        self.config = config
     
     def register_handlers(self):
         self.events.on(f"{self.__class__.__name__}.tick")(self.onTick)

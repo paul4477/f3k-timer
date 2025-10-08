@@ -1,4 +1,5 @@
 import logging
+from logging import config
 import time
 import math
 import asyncio 
@@ -170,6 +171,20 @@ class Player:
         # or more complex check that queries list of rounds and state object
         return self.running
     
+    def set_config(self, event_config):
+        self.event_config = event_config
+        self.logger.info(f"Player configuration: {self.event_config}")
+
+        if not 'prep_time' in self.event_config: self.event_config['prep_time'] = 300
+        if self.event_config['use_strict_test_time']:
+            self.event_config['test_time'] = 45
+        else:   
+            self.event_config['test_time'] = 0
+        if not 'no_fly_time' in self.event_config: self.event_config['no_fly_time'] = 60
+        if not 'land_time' in self.event_config: self.event_config['land_time'] = 30
+        if not 'group_separation_time' in self.event_config: self.event_config['group_separation_time'] = 120
+        self.logger.info(f"Player configuration after defaults: {self.event_config}")
+
     def register_handlers(self):
         self.events.on("player.data_available")(self.load_data)
         # handlers for control commands from web client(s)
@@ -184,10 +199,7 @@ class Player:
         self.events.on("player.quit")(self.quit)
         
     async def load_data(self, raw_json):
-        
-        
-        
-        self.rounds = f3k_cl_competition.make_rounds(raw_json)
+        self.rounds = f3k_cl_competition.make_rounds(raw_json, self.event_config)
         self.logger.info(f"Loaded {len(self.rounds)} rounds from event data")
 
         self.pilots = self._set_pilots(raw_json)
