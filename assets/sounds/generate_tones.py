@@ -109,7 +109,7 @@ class BeepGenerator:
         self.audio = np.array(self.audio).astype(np.float32)
         try: scipy.io.wavfile.write(file_name, int(self.sample_rate), np.array(self.audio))
         except PermissionError:
-            print("\nFailed to open file: {file_name} for writing.\n" \
+            print(f"\nFailed to open file: {file_name} for writing.\n" \
             "Do you have the file open in another application?\n\n")
             sys.exit(1)
         print (f"    Wrote: {file_name}")
@@ -241,20 +241,20 @@ if __name__ == "__main__":
 
         for tone_group in config_data:
             try:
-                tone_count = len(list((x for x in tone_group.get('beeps', [])  if x.get('beep', None))))
+                tone_count = len(list((x for x in tone_group.get('tones', [])  if x.get('tone', None))))
                 print(f"Processing: {tone_group.get('name', 'output')}. Contains {tone_count} tones.")
             except:
                 print(f"Warning: Invalid format in config file. Check examples.")
                 continue
             bg = BeepGenerator()
-            beeps = tone_group.get("beeps", [])
-            for item in beeps:
-                if "beep" in item:
-                    beep = item["beep"]
-                    pitch = beep.get("pitch", 440)
-                    duration = beep.get("duration", 500)
-                    type_ = beep.get("type", "square")
-                    pitch_offset = beep.get("pitch_offset", 0)
+            tones = tone_group.get("tones", [])
+            for item in tones:
+                if "tone" in item:
+                    tone = item["tone"]
+                    pitch = tone.get("pitch", 440)
+                    duration = tone.get("duration", 500)
+                    type_ = tone.get("type", "square")
+                    pitch_offset = tone.get("pitch_offset", 0)
                     # Map type to BeepGenerator method
                     if type_ == "sqsaw":
                         bg.append_squaresawwave(
@@ -277,13 +277,13 @@ if __name__ == "__main__":
                             volume=0.85
                         )
                     else:
-                        print(f"Warning: Unknown beep type '{type_}'")
+                        print(f"Warning: Unknown tone type '{type_}'")
                 elif "silence" in item:
                     silence = item["silence"]
                     duration = silence.get("duration", 500)
                     bg.append_silence(duration_milliseconds=duration)
                 else:
-                    print(f"Warning: Invalid beep/silence entry: {item}")
+                    print(f"Warning: Invalid tone/silence entry: {item}")
 
             name = tone_group.get("name", "output")
             if not name.lower().endswith(".wav"):
@@ -292,61 +292,3 @@ if __name__ == "__main__":
             bg.save_wav(name)
 
     sys.exit()
-
-    # Idea would be to extend the BG class to take this config in init 
-    # then run save_wav method to write the whole file.
-    # Loop over the config_data and generate all that are definfed.
-
-    """bg = BeepGenerator()
-    freq_beep = 550
-    freq_tone = 732
-    saw_offset = 5
-    short = 250# ms
-    long=1000 #ms
-    volume=0.85
-
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_tone,  freq_offset=saw_offset, duration_milliseconds=long)
-    bg.save_wav("4321_normal.wav")
-    bg = BeepGenerator()
-    bg.append_squaresawwave(volume=volume, freq=freq_tone,  freq_offset=saw_offset, duration_milliseconds=long)
-    bg.save_wav("normal_1s.wav")
-    
-    bg = BeepGenerator()
-    long=3000
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_tone,  freq_offset=saw_offset, duration_milliseconds=long)
-    bg.save_wav("4321_3s.wav")
-
-    bg = BeepGenerator()
-    freq_beep = 500
-    freq_tone = 442
-    short = 100
-    long = 500
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    bg.append_squaresawwave(volume=volume, freq=freq_beep,  freq_offset=saw_offset, duration_milliseconds=short)
-    bg.append_silence(1000-short)
-    
-    bg.append_squaresawwave(volume=volume, freq=freq_tone,  freq_offset=saw_offset, duration_milliseconds=long)
-    bg.save_wav("4321_short_down.wav")
-  """

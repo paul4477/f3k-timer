@@ -1,28 +1,28 @@
 ---
 name: example1.wav
-beeps:
-  - beep:
+tones:
+  - tone:
       pitch: 440 #hz
       duration: 500 #ms
       type: sqsaw # saw, square or sqsaw
       pitch_offset: 0 # hz only applicable for sqsaw type
   - silence:
       duration: 500 
-  - beep:
+  - tone:
       pitch: 550 #hz
       duration: 1000 #ms
       type: square # saw, square or sqsaw
       pitch_offset: 0 # hz only applicable for sqsaw type
   - silence:
       duration: 500 
-  - beep:
+  - tone:
       pitch: 660 #hz
       duration: 1500 #ms
       type: saw # saw, square or sqsaw
       pitch_offset: 0 # hz only applicable for sqsaw type
   - silence:
       duration: 500
-  - beep:
+  - tone:
       pitch: 880 #hz
       duration: 1500 #ms
       type: sqsaw # saw, square or sqsaw
@@ -30,72 +30,72 @@ beeps:
 
 ---
 name: 4321_3s.wav
-beeps:
-  - beep: &short_beep
+tones:
+  - tone: &short_tone
       pitch: 550 #hz
       duration: 250 #ms
       type: sqsaw # saw, square or sqsaw
       pitch_offset: 5 # hz only applicable for sqsaw type
   - silence: &inverse_silence
       duration: 750 # If each section is exactly 1second then this must be (1000 - tone duration)
-  - beep: *short_beep
+  - tone: *short_tone
   - silence: *inverse_silence
-  - beep: *short_beep
+  - tone: *short_tone
   - silence: *inverse_silence
-  - beep: *short_beep
+  - tone: *short_tone
   - silence: *inverse_silence    
-  - beep:
+  - tone:
       pitch: 732 #hz
       duration: 3000 #ms
       type: sqsaw # saw, square or sqsaw
-      pitch_offset: 7 # hz only applicable for sqsaw type
+      pitch_offset: 5 # hz only applicable for sqsaw type
 ---
 name: 4321_normal.wav
-beeps:
-  - beep: &short_beep
+tones:
+  - tone: &short_tone
       pitch: 550 #hz
       duration: 250 #ms
       type: sqsaw # saw, square or sqsaw
       pitch_offset: 5 # hz only applicable for sqsaw type
   - silence: &inverse_silence
       duration: 750
-  - beep: *short_beep
+  - tone: *short_tone
   - silence: *inverse_silence
-  - beep: *short_beep
+  - tone: *short_tone
   - silence: *inverse_silence
-  - beep: *short_beep
+  - tone: *short_tone
   - silence: *inverse_silence    
-  - beep:
+  - tone:
       pitch: 732 #hz
       duration: 1000 #ms
       type: sqsaw # saw, square or sqsaw
-      pitch_offset: 7 # hz only applicable for sqsaw type
+      pitch_offset: 5 # hz only applicable for sqsaw type
 ---
 name: normal_1s.wav
-beeps:
-  - beep:
+tones:
+  - tone:
       pitch: 732 #hz
       duration: 1000 #ms
       type: sqsaw # saw, square or sqsaw
-      pitch_offset: 7 # hz only applicable for sqsaw type
+      pitch_offset: 5 # hz only applicable for sqsaw type
 ---
 name: 4321_short_down.wav
-beeps:
-  - beep: &short_beep
+tones:
+  - tone: &short_tone
       pitch: 500 #hz
       duration: 150 #ms
       type: sqsaw # saw, square or sqsaw
       pitch_offset: 5 # hz only applicable for sqsaw type
   - silence: &inverse_silence
       duration: 850 # If each section is exactly 1second then this must be (1000 - tone duration)
-  - beep: *short_beep
+  - tone: *short_tone
   - silence: *inverse_silence
-  - beep: *short_beep
+  - tone: *short_tone
   - silence: *inverse_silence
-  - beep: *short_beep
+  - tone: *short_tone
   - silence: *inverse_silence    
-  - beep:
+  - tone:
       pitch: 442 #hz
       duration: 500 #ms
       type: sqsaw # saw, square or sqsaw
-      pitch_offset: 7 # hz only applicable for sqsaw type
+      pitch_offset: 5 # hz only applicable for sqsaw type
