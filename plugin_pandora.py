@@ -47,5 +47,7 @@ class Pandora(PluginBase):
                       f"G{g:02}" \
                       f"T{state.time_digits}" \
                       f"{s}\r".encode('ascii')
-            self.write(output)
+            try: self.write(output)
+            except Exception as e:
+                self.logger.error(f"Write failed to device {self.device}")
 
