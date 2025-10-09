@@ -20,6 +20,7 @@ propcache==0.3.2
 protobuf==6.32.1
 pygame==2.6.1
 pyserial==3.5
+PyYAML==6.0.3
 requests==2.32.5
 scapy==2.5.0
 sympy==1.14.0
