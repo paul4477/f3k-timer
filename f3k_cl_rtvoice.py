@@ -21,8 +21,12 @@ class Voice:
               self.voice_name = voice_name
               self.syn_config = config
               self.events = events
-              
-              self._voice = PiperVoice.load(os.path.join("assets", "voice_data",f'{voice_name}.onnx'),
+              ## Check the path we are loading exists and log error if it doesn't.
+              if not os.path.exists(os.path.join("assets", "voice_data",f'{voice_name}.onnx')): 
+                self.logger.error(f"Voice data file not found: {os.path.join('assets', 'voice_data',f'{voice_name}.onnx')}")
+                self._voice = None
+              else:
+                self._voice = PiperVoice.load(os.path.join("assets", "voice_data",f'{voice_name}.onnx'),
                                              config_path=os.path.join("assets", "voice_data",f'{voice_name}.onnx.json'))
               self.register_handlers()
 
@@ -30,6 +34,7 @@ class Voice:
             self.events.on("rtvoice.generate_and_store_sound")(self.generate_and_store_sound)
 
         async def generate_and_store_sound(self, text_to_speech, group_obj, paragraph_silence=1.2):
+            if self._voice:
               silence_int16_bytes = bytes(
                     int(self._voice.config.sample_rate * paragraph_silence * 2)
                     )
@@ -53,6 +58,7 @@ class Voice:
 
 
         def generate_audio_bytes(self, text_to_speech, paragraph_silence=1.2):
+            if self._voice:
               silence_int16_bytes = bytes(
                     int(self._voice.config.sample_rate * paragraph_silence * 2)
                     )
