@@ -57,6 +57,33 @@ function onBodyLoad() {
     }
   };
 
+  // General event handler for control buttons
+async function handleControlButton(event) {
+  const buttonId = event.target.id;
+  const endpoint = `/control/${buttonId}`;
+  
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      body: {}
+    });
+    
+    if (!response.ok) {
+      console.error(`Error: ${response.status} ${response.statusText}`);
+    }
+  } catch (err) {
+    console.error(`Error making request to ${endpoint}: ${err}`);
+  }
+}
+  
+document.getElementById('start').addEventListener('click', handleControlButton);
+document.getElementById('pause').addEventListener('click', handleControlButton);
+document.getElementById('skip_fwd').addEventListener('click', handleControlButton);
+
+document.getElementById('skip_next').addEventListener('click', handleControlButton);
+document.getElementById('skip_back').addEventListener('click', handleControlButton);
+document.getElementById('skip_previous').addEventListener('click', handleControlButton); 
+
   // Quit button click handler
   document.getElementById('quitBtn').onclick = function () {
     if (socket && socket.readyState === WebSocket.OPEN) {
@@ -65,57 +92,8 @@ function onBodyLoad() {
       alert('WebSocket is not connected.');
     }
   };
-  // Start button click handler
-  document.getElementById('startBtn').onclick = function (e) {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"start"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-    // Disable the button
-    e.target.closest("button").disabled = true;
-  };
-  // Pause button click handler
-  document.getElementById('pauseBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"pause"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-  // FWD button click handler
-  document.getElementById('skip_fwdBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_fwd"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-  // Next button click handler
-  document.getElementById('skip_nextBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_next"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-  // REW button click handler
-  document.getElementById('skip_backBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_back"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-  // Back button click handler
-  document.getElementById('skip_previousBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"skip_previous"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-}
+
+
 
 function handleMessageByType(type, data) {
   switch (type) {
