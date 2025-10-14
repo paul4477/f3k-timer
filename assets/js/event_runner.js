@@ -37,6 +37,7 @@ function connectWebSocket() {
   };
 }
 
+
 function scheduleReconnect() {
   if (!reconnectTimeout) {
     reconnectTimeout = setTimeout(() => {
@@ -59,7 +60,7 @@ function onBodyLoad() {
 
   // General event handler for control buttons
 async function handleControlButton(event) {
-  const buttonId = event.target.id;
+  const buttonId = event.target.closest('button').id;
   const endpoint = `/control/${buttonId}`;
   
   try {
@@ -93,7 +94,7 @@ document.getElementById('skip_previous').addEventListener('click', handleControl
     }
   };
 
-
+}
 
 function handleMessageByType(type, data) {
   switch (type) {
