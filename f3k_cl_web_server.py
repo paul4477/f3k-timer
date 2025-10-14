@@ -35,6 +35,7 @@ class WebFrontend(PluginBase):
                 
                 web.get("/run", self.handle_run_page),
                 web.get("/view", self.handle_view_page),
+                web.post("/control/{command}", self.handle_control),
 
                 web.get("/reset", self.handle_reset),
                 web.post("/timesync/", self.handle_timesync),
@@ -141,6 +142,10 @@ class WebFrontend(PluginBase):
         else:
             #return web.Response(status=200, text=f"Event load requested")
             raise web.HTTPFound('/run')
+
+    async def handle_control(self, request):
+        self.events.trigger(f"player.{request.match_info['command']}")
+        return web.Response(status=200, text=f"Done")
 
     ## Handle control commands from web client(s) - pause, skip, reset etc
     async def ws_handler(self, request):

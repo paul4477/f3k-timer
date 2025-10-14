@@ -231,17 +231,19 @@ class Player:
         else: 
             self.started = True
             self.state.resume()
-    async def skip_fwd(self, seconds):
+    async def skip_fwd(self, seconds=10):
         if self.state.slot_time:
-            self.state.slot_time -= 10
+            self.state.slot_time -= seconds
             self.state.end_time = time.time() + self.state.slot_time
-    async def skip_back(self, seconds):
+    async def skip_back(self, seconds=10):
         ## Protect against exceeding original section length
         if self.state.slot_time:
-            self.state.slot_time = min(self.state.section.sectionTime, self.state.slot_time + 10)
+            self.state.slot_time = min(self.state.section.sectionTime, self.state.slot_time + seconds)
             self.state.end_time = time.time() + self.state.slot_time
     async def skip_previous(self):
-        pass
+        if self.state.slot_time:
+            self.state.slot_time = self.state.section.sectionTime
+            self.state.end_time = time.time() + self.state.slot_time
     async def skip_next(self):
         if not self.state.next_section():
             if not self.state.next_group():
