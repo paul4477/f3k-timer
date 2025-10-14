@@ -39,7 +39,7 @@ class AudioPlayer(PluginBase):
       next_section = state.section.get_next_section()
       if next_section:
         audio = next_section.pre_announce_times.get(-state.slot_time, None)
-        self.logger.debug(f"in onSecond. state.slot_time is {state.slot_time}, next_section: {next_section}, audio: {audio}, {next_section.pre_announce_times}")
+        #self.logger.debug(f"in onSecond. state.slot_time is {state.slot_time}, next_section: {next_section}, audio: {audio}, {next_section.pre_announce_times}")
         if audio:
          self.events.trigger(f"audioplayer.play_audio", audio)
 
