@@ -9,15 +9,15 @@ const bigTime = document.getElementById('bigTime');
 // Handle incoming general messages
 eventSource.onmessage = function(event) {
   // For now lets just put it up for debugging
-  console.log(event.data);
+  //console.log(event.data);
     
 };
 
 eventSource.addEventListener("groupData", (event) => {
-  console.log(JSON.stringify(event.data));
+  console.log(event.data);
 });
 eventSource.addEventListener("roundData", (event) => {
-  console.log(JSON.stringify(event.data));
+  console.log(event.data);
 });
 
 eventSource.addEventListener("time", (event) => {
@@ -99,17 +99,6 @@ document.getElementById('skip_previous').addEventListener('click', handleControl
 document.getElementById('quit').addEventListener('click', handleControlButton); 
 }
 
-function handleMessageByType(type, data) {
-  switch (type) {
-    case 'time':
-      handleTime(data);
-      break;
-    case 'groupData':
-      handlegroupData(data);
-      break;
-    default:
-      console.warn('Unhandled message type:', type, data);
-  }
-}
+
 
 
