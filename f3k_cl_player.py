@@ -36,34 +36,7 @@ class State:
 
     def start(self, round=1, group=1):
         self.iter_round = iter(self.player.rounds)
-        try:
-            self.round = next(self.iter_round)
-            self.logger.info(f"START: ROUND: {self.round}")
-        except StopIteration:
-            ## End of event
-            self.logger.error("Trying to State.start(), no rounds, event ended")
-            return
-        
-        self.iter_group = iter(self.round)
-        try:
-            self.group = next(self.iter_group)
-            self.logger.info(f"START: GROUP: {self.group}")
-        except StopIteration:
-            ## End of round
-            self.logger.debug(f"No groups in round {self.round}, cannot start")
-            return
-
-        self.iter_section = iter(self.group)
-        try:
-            self.section = next(self.iter_section)
-            self.slot_time = self.section.sectionTime
-            self.logger.info(f"START: SECTION: {self.section}")
-        except StopIteration:
-            ## End of group
-            self.logger.debug(f"No sections in group {self.round}, cannot start")
-            return
-        
-        self.end_time = time.time() + self.slot_time
+        self.next_round()
 
     def resume(self):
         self.end_time = time.time() + self.slot_time
@@ -74,11 +47,32 @@ class State:
             return self.section.is_no_fly()
         else:
             return True
+    def next(self):
+        if not self.next_section():
+            if not self.next_group():
+                if not self.next_round():
+                    ## End of event
+                    self.logger.info("End of event")
+                    self.player.running = True # keep program alive
+                    self.player.started = False
+                    return False
+                else:
+                    self.logger.info(f"Start of round {self.round.round_number} window")
+                    return True
+            else:
+                self.logger.info(f"Start of group in round {self.round.round_number}")
+                return True
+        else:
+            return True
+             
+
 
     def next_round(self):
         try:
             self.round = next(self.iter_round)
             self.logger.info(f"NEXT_ROUND: Round: {self.round}")
+            for consumer in self.player.eventConsumers:
+                self.player.events.trigger(f"{consumer.__class__.__name__}.newRound", self)
             self.iter_group = iter(self.round)
             self.next_group()
             return True
@@ -93,6 +87,8 @@ class State:
         try:
             self.group = next(self.iter_group)
             self.logger.info(f"NEXT_GROUP: Group: {self.group}")
+            for consumer in self.player.eventConsumers:
+                self.player.events.trigger(f"{consumer.__class__.__name__}.newGroup", self)
             self.iter_section = iter(self.group)
             self.next_section()
             return True
@@ -109,6 +105,8 @@ class State:
             self.slot_time = self.section.sectionTime
             self.end_time = time.time() + self.slot_time
             self.logger.info(f"NEXT_SECTION: Section: {self.section}")
+            for consumer in self.player.eventConsumers:
+                self.player.events.trigger(f"{consumer.__class__.__name__}.newSection", self)  
             return True
         except StopIteration:
             ## End of group
@@ -219,12 +217,6 @@ class Player:
         if not self.started:
             self.started = True
             self.state.start()
-            for consumer in self.eventConsumers:
-                self.events.trigger(f"{consumer.__class__.__name__}.newRound", self.state)
-            for consumer in self.eventConsumers:
-                self.events.trigger(f"{consumer.__class__.__name__}.newGroup", self.state)
-            for consumer in self.eventConsumers:
-                self.events.trigger(f"{consumer.__class__.__name__}.newSection", self.state)            
 
     async def pause(self):
         if self.started: self.started = False
@@ -245,27 +237,8 @@ class Player:
             self.state.slot_time = self.state.section.sectionTime
             self.state.end_time = time.time() + self.state.slot_time
     async def skip_next(self):
-        if not self.state.next_section():
-            if not self.state.next_group():
-                if not self.state.next_round():
-                    ## End of event
-                    self.logger.info("End of event")
-                    self.running = True # keep program alive
-                    self.started = False
-                    #self.mixer.play(pygame.mixer.Sound('sounds/horn.wav'))
-                    #self.events.trigger(f"audioplayer.play_literally_end_of_event")
-                    return
-                else:
-                    self.logger.info(f"Start of round {self.state.round.round_number} window")
-                    for consumer in self.eventConsumers:
-                        self.events.trigger(f"{consumer.__class__.__name__}.newRound", self.state)
-            else:
-                self.logger.info(f"Start of group in round {self.state.round.round_number}")
-                for consumer in self.eventConsumers:
-                    self.events.trigger(f"{consumer.__class__.__name__}.newGroup", self.state)
-        else:
-            for consumer in self.eventConsumers:
-                self.events.trigger(f"{consumer.__class__.__name__}.newSection", self.state)                    
+        self.state.next()
+              
 
     async def goto(self, round=1, group=1):
         await self.stop()
@@ -371,25 +344,9 @@ class Player:
             #self.last_announced = None
             self.state.clear_section()
 
-            if not self.state.next_section():
-                if not self.state.next_group():
-                    if not self.state.next_round():
-                        ## End of event
+            if not self.state.next():
                         self.logger.info("End of event")
                         self.running = True # keep program alive
-                        self.started = False
-                        #self.mixer.play(pygame.mixer.Sound('sounds/horn.wav'))
-                        #self.events.trigger(f"audioplayer.play_literally_end_of_event")
-                        return
-                    else:
-                        self.logger.info(f"Start of round {self.state.round.round_number} window")
-                        for consumer in self.eventConsumers:
-                            self.events.trigger(f"{consumer.__class__.__name__}.newRound", self.state)
-                else:
-                    self.logger.info(f"Start of group in round {self.state.round.round_number}")
-                    for consumer in self.eventConsumers:
-                        self.events.trigger(f"{consumer.__class__.__name__}.newGroup", self.state)
-            else:
-               for consumer in self.eventConsumers:
-                    self.events.trigger(f"{consumer.__class__.__name__}.newSection", self.state)
+                        self.started = False                
+
 
