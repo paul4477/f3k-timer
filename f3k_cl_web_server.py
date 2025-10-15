@@ -43,7 +43,7 @@ class WebFrontend(PluginBase):
 
                 web.get("/reset", self.handle_reset),
                 web.post("/timesync/", self.handle_timesync),
-                web.get("/ws/", self.ws_handler),
+                #web.get("/ws/", self.ws_handler),
                 web.post("/load_event", self.handle_load_event),
 
                 web.get("/groupData", self.handle_groupData),
@@ -83,8 +83,6 @@ class WebFrontend(PluginBase):
             content_type="application/json", body=body,
         )    
      
-
-
     async def handle_roundData(self, request):
         # Serve the json data
         body =json.dumps(self.roundDict)
@@ -93,7 +91,6 @@ class WebFrontend(PluginBase):
         )    
 
     async def handle_reset(self, request):
-        # Serve the static HTML file
         self.logger.info(f"Resetting event data, {self.event_data_loaded}")
         if self.event_data_loaded: self.event_data_loaded = False
         self.events.trigger(f"player.stop")
@@ -153,7 +150,6 @@ class WebFrontend(PluginBase):
             content_type="application/json", body=body,
         )
 
-    # json reponse for time sync requests from web clients
     async def handle_load_event(self, request):
         self.logger.debug("in handle_load_event")
         data = await request.json()
@@ -175,72 +171,6 @@ class WebFrontend(PluginBase):
     async def handle_control(self, request):
         self.events.trigger(f"player.{request.match_info['command']}")
         return web.Response(status=200, text=f"Done")
-
-    ## Handle control commands from web client(s) - pause, skip, reset etc
-    async def ws_handler(self, request):
-        self.logger.debug("in ws_handler")
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-        self.clients.add(ws) # Add client to list of connected clients
-        self.logger.info (f"Client connected: {request.remote} Total: {len(self.clients)}")
-        try:
-          async for msg in ws:
-            if msg.type == web.WSMsgType.TEXT:
-                if msg.data == 'close':
-                  await ws.close()
-                else:
-                  self.logger.debug(f"Message from client: {msg.data}")
-                  # Handle control commands from web client(s) - pause, skip, reset etc
-
-                  try:
-                      data = json.loads(msg.data)
-                      command = data.get("command")
-                  except Exception as e:
-                      self.logger.error(f"Failed to parse message: {msg.data} ({e})")
-                      continue
-
-                  match command:
-                      case "start":
-                          self.logger.info("Received start command")
-                          self.events.trigger(f"player.start")
-                      case "pause":
-                          self.logger.info("Received pause command")
-                          self.events.trigger(f"player.pause")
-                      case "skip_fwd":
-                          self.logger.info("Received skip_fwd command")
-                          self.events.trigger(f"player.skip_fwd", 15)  # skip forward 15 seconds
-                      case "skip_back":
-                          self.logger.info("Received skip_back command")
-                          self.events.trigger(f"player.skip_back", 15)  # skip back 15 seconds
-                      case "skip_previous":
-                          self.logger.info("Received skip_previous command")
-                          self.events.trigger(f"player.skip_previous")
-                      case "skip_next":
-                          self.logger.info("Received skip_next command")
-                          self.events.trigger(f"player.skip_next")
-                      case "goto":
-                          self.logger.info("Received goto command")
-                          try:
-                              r = int(data.get("round", 0))
-                              g = int(data.get("group", 0))
-                          except ValueError:
-                              self.logger.error(f"Bad data for goto: round: {data.get('round', 0)}, group: {data.get('group',0)}")
-                          self.events.trigger(f"player.goto", r, g)
-                      case "quit":
-                          self.logger.info("Received quit command")
-                          self.events.trigger(f"player.quit")
-
-                      case _:
-                          self.logger.warning(f"Unknown command: {command}")
-
-            elif msg.type == web.WSMsgType.ERROR:
-                self.logger.info(f"WebSocket connection closed with exception {ws.exception()}")
-        finally:
-          self.clients.remove(ws)
-          self.logger.info(f"Client disconnected. Total: {len(self.clients)}")
-        return ws
-    
-
     
     async def startup(self):
         self.runner = web.AppRunner(self.app)
@@ -261,7 +191,7 @@ class WebFrontend(PluginBase):
         except AttributeError:
             pass
         now = time.time()
-        if (now - self.last_update) >= 1:
+        if (now - self.last_update) >= 1/6:
             self.last_update = now
             return False
         else:
@@ -283,36 +213,37 @@ class WebFrontend(PluginBase):
 
     async def onNewSection(self, state):
         # Section info is included in time updates
-        for q in list(self.client_queues):
-            q.put_nowait((json.dumps({'type': state.section.__class__.__name__}), "sectionData"))
+        if ((not self.limit_rate(state)) and state and state.round):
+            for q in list(self.client_queues):
+                q.put_nowait((json.dumps({'type': state.section.__class__.__name__}), "sectionData"))
 
     async def onNewGroup(self, state):
-        d = { 'pilots':[] }
-        for pid in state.group.pilots:
-            d['pilots'].append(state.player.pilots[pid].name)
+        if ((not self.limit_rate(state)) and state and state.round):
+            d = { 'pilots':[] }
+            for pid in state.group.pilots:
+                d['pilots'].append(state.player.pilots[pid].name)
 
-        d['group_number'] = state.group.group_number
-        d['group_letter'] = state.group.group_letter
-        
-        self.groupDict = d
+            d['group_number'] = state.group.group_number
+            d['group_letter'] = state.group.group_letter
+            
+            self.groupDict = d
 
-        for q in list(self.client_queues):
-            q.put_nowait((json.dumps(d), "groupData"))
+            for q in list(self.client_queues):
+                q.put_nowait((json.dumps(d), "groupData"))
 
     async def onNewRound(self, state):
-        d = {}
-        d['round_number'] = state.round.round_number
-        d['group_count'] = len(state.round.groups)
-        d['window_time'] = state.round.windowTime
-        d['task'] = {
-        'short_code': state.round.short_code,
-        'short_name': state.round.short_name,
-        'name': state.round.task_name,
-        'description': state.round.task_description,
-        }
-        self.roundDict = d
+        if ((not self.limit_rate(state)) and state and state.round):
+            d = {}
+            d['round_number'] = state.round.round_number
+            d['group_count'] = len(state.round.groups)
+            d['window_time'] = state.round.windowTime
+            d['task'] = {
+            'short_code': state.round.short_code,
+            'short_name': state.round.short_name,
+            'name': state.round.task_name,
+            'description': state.round.task_description,
+            }
+            self.roundDict = d
 
-        for q in list(self.client_queues):
-            q.put_nowait((json.dumps(d), "roundData"))
-        # We will also be starting a newGroup here      
-        #await self.onNewGroup(state)
+            for q in list(self.client_queues):
+                q.put_nowait((json.dumps(d), "roundData"))
