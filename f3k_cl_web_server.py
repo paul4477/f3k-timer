@@ -3,7 +3,8 @@ import json
 import time
 import logging
 import os
-from aiohttp import web
+from aiohttp import web, ClientConnectionError
+from aiohttp_sse import sse_response
 from plugin_base import PluginBase
 
 CORS_HEADERS = {
@@ -19,6 +20,7 @@ class WebFrontend(PluginBase):
         self.app = web.Application()
         self.ticks = 0
         self.clients = set()
+        self.client_queues = set()
         self.events = events
         self.event_data_loaded = False
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -35,7 +37,9 @@ class WebFrontend(PluginBase):
                 
                 web.get("/run", self.handle_run_page),
                 web.get("/view", self.handle_view_page),
+                
                 web.post("/control/{command}", self.handle_control),
+                web.get("/state-stream", self.handle_state_stream),
 
                 web.get("/reset", self.handle_reset),
                 web.post("/timesync/", self.handle_timesync),
@@ -46,6 +50,31 @@ class WebFrontend(PluginBase):
                 web.get("/roundData", self.handle_roundData),
             ]
         )
+
+    async def handle_state_stream(self, request):
+        # Serve the SSE stream 
+        
+        queue = asyncio.Queue()
+        self.client_queues.add(queue)
+        self.logger.debug(f"New state-stream, {request.remote}, {len(self.client_queues)} queues, id(queue): {id(queue)}")     
+        async with sse_response(request) as resp:
+            while resp.is_connected():
+                self.logger.debug(f"{request.remote} is connected.")     
+                q_item = await queue.get()
+                if len(q_item)==2:
+                    payload, etype = q_item
+                elif len(q_item)==1:
+                    payload, etype = q_item[0], None
+                self.logger.debug(f"id(queue): {id(queue)} yielded event ({etype}).")     
+                try:
+                    await resp.send(payload, event=etype)
+                except ClientConnectionError:
+                    self.logger.debug(f"Closing state-stream, {request.remote}, ClientConnectionError")     
+                    break
+        self.client_queues.remove(queue)
+        self.logger.debug(f"Closing state-stream, {request.remote}, {len(self.client_queues)} queues, id(queue): {id(queue)}")     
+        return resp   
+
 
     async def handle_groupData(self, request):
         # Serve the json data
@@ -232,7 +261,7 @@ class WebFrontend(PluginBase):
         except AttributeError:
             pass
         now = time.time()
-        if (now - self.last_update) >= 1/6:
+        if (now - self.last_update) >= 1:
             self.last_update = now
             return False
         else:
@@ -240,39 +269,35 @@ class WebFrontend(PluginBase):
 
     async def onTick(self, state):
         # Send the bits of state needed to the web clients
-        #self.logger.debug(f"Sending update to web client.Limit rate?: {self.limit_rate(state)} {state.section.__class__.__name__} {state.round}")
         if ((not self.limit_rate(state)) and state and state.round):
             d = state.get_dict()
-            #self.logger.debug(f"Sending to client: {d}")
-
-            msg = json.dumps({"type": "time", "data": d} )
-            for ws in list(self.clients):
-                #self.logger.debug(f"Sending to client: {msg}")
+            for q in list(self.client_queues):
                 try: 
-                    await ws.send_str(msg)
-                except: #ConnectionResetError ??
+                    await q.put_nowait((json.dumps(d), "time"))
+                except: 
                     pass
 
     async def onSecond(self, state):
+        # Not needed since we're updating onTick
         pass
+
     async def onNewSection(self, state):
-        #if self.enabled():
-        pass
+        # Section info is included in time updates
+        for q in list(self.client_queues):
+            q.put_nowait((json.dumps({'type': state.section.__class__.__name__}), "sectionData"))
+
     async def onNewGroup(self, state):
-        d = {'pilots':[]}
+        d = { 'pilots':[] }
         for pid in state.group.pilots:
             d['pilots'].append(state.player.pilots[pid].name)
+
         d['group_number'] = state.group.group_number
         d['group_letter'] = state.group.group_letter
-        self.groupDict = d
-        msg = json.dumps({"type": "groupData", "data": d} )
-        for ws in list(self.clients):
-            #self.logger.debug(f"Sending to client: {msg}")
-            try: 
-                await ws.send_str(msg)
-            except: #ConnectionResetError ??
-                pass        
         
+        self.groupDict = d
+
+        for q in list(self.client_queues):
+            q.put_nowait((json.dumps(d), "groupData"))
 
     async def onNewRound(self, state):
         d = {}
@@ -286,11 +311,8 @@ class WebFrontend(PluginBase):
         'description': state.round.task_description,
         }
         self.roundDict = d
-        msg = json.dumps({"type": "roundData", "data": d} )
-        for ws in list(self.clients):
-            #self.logger.debug(f"Sending to client: {msg}")
-            try: 
-                await ws.send_str(msg)
-            except: #ConnectionResetError ??
-                pass        
-        await self.onNewGroup(state)
+
+        for q in list(self.client_queues):
+            q.put_nowait((json.dumps(d), "roundData"))
+        # We will also be starting a newGroup here      
+        #await self.onNewGroup(state)
