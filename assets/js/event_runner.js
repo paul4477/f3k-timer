@@ -2,115 +2,30 @@ let socket;
 let reconnectInterval = 2000; // ms
 let reconnectTimeout;
 
-function connectWebSocket() {
-  socket = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/');
+// Create EventSource connection for state updates
+const eventSource = new EventSource('/state-stream');
+const bigTime = document.getElementById('bigTime');
 
-  socket.onopen = function (event) {
-    console.log('WebSocket connection opened:', event);
-    if (reconnectTimeout) {
-      clearTimeout(reconnectTimeout);
-      reconnectTimeout = null;
-    }
-  };
-
-  socket.onmessage = function (event) {
-    try {
-      const data = JSON.parse(event.data);
-      if (data && data.type) {
-        handleMessageByType(data.type, data.data);
-      } else {
-        console.warn('Received message without type:', data);
-      }
-    } catch (e) {
-      console.error('Failed to parse message:', event.data, e);
-    }
-  };
-
-  socket.onclose = function (event) {
-    console.warn('WebSocket closed. Attempting to reconnect...');
-    scheduleReconnect();
-  };
-
-  socket.onerror = function (event) {
-    console.error('WebSocket error:', event);
-    socket.close();
-  };
-}
-
-
-function scheduleReconnect() {
-  if (!reconnectTimeout) {
-    reconnectTimeout = setTimeout(() => {
-      connectWebSocket();
-    }, reconnectInterval);
-  }
-}
-
-function onBodyLoad() {
-  connectWebSocket();
-  // Button click handler
-  document.getElementById('sendBtn').onclick = function () {
-    const msg = document.getElementById('wsTXMessage').value;
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(msg);
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
-
-  // General event handler for control buttons
-async function handleControlButton(event) {
-  const buttonId = event.target.closest('button').id;
-  const endpoint = `/control/${buttonId}`;
-  
-  try {
-    const response = await fetch(endpoint, {
-      method: 'POST',
-      body: {}
-    });
+// Handle incoming general messages
+eventSource.onmessage = function(event) {
+  // For now lets just put it up for debugging
+  console.log(event.data);
     
-    if (!response.ok) {
-      console.error(`Error: ${response.status} ${response.statusText}`);
-    }
-  } catch (err) {
-    console.error(`Error making request to ${endpoint}: ${err}`);
-  }
-}
-  
-document.getElementById('start').addEventListener('click', handleControlButton);
-document.getElementById('pause').addEventListener('click', handleControlButton);
-document.getElementById('skip_fwd').addEventListener('click', handleControlButton);
+};
 
-document.getElementById('skip_next').addEventListener('click', handleControlButton);
-document.getElementById('skip_back').addEventListener('click', handleControlButton);
-document.getElementById('skip_previous').addEventListener('click', handleControlButton); 
+eventSource.addEventListener("groupData", (event) => {
+  console.log(JSON.stringify(event.data));
+});
+eventSource.addEventListener("roundData", (event) => {
+  console.log(JSON.stringify(event.data));
+});
 
-  // Quit button click handler
-  document.getElementById('quitBtn').onclick = function () {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send('{"command":"quit"}');
-    } else {
-      alert('WebSocket is not connected.');
-    }
-  };
+eventSource.addEventListener("time", (event) => {
+  //console.log("Time event received:");
+  //console.log(typeof event.data);
+  data = JSON.parse(event.data);
 
-}
-
-function handleMessageByType(type, data) {
-  switch (type) {
-    case 'time':
-      handleTime(data);
-      break;
-    case 'groupData':
-      handlegroupData(data);
-      break;
-    default:
-      console.warn('Unhandled message type:', type, data);
-  }
-}
-
-function handleTime(data) {
-  document.getElementById('wsRXMessage').value = JSON.stringify(data);
+  document.getElementById('wsRXMessage').value = event.data;
   document.getElementById('bigTime').textContent = data.time_str;
   document.getElementById('roundNum').textContent = data.round_num;
   document.getElementById('groupLetter').textContent = data.group_let;
@@ -153,11 +68,48 @@ function handleTime(data) {
       sectionRow.classList.add('bg-success');
     }
   }
+});
+
+// General event handler for control buttons
+async function handleControlButton(event) {
+  const buttonId = event.target.closest('button').id;
+  const endpoint = `/control/${buttonId}`;
+  
+  try {
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      body: {}
+    });
+    
+    if (!response.ok) {
+      console.error(`Error: ${response.status} ${response.statusText}`);
+    }
+  } catch (err) {
+    console.error(`Error making request to ${endpoint}: ${err}`);
+  }
+}
+function onBodyLoad() {  
+document.getElementById('start').addEventListener('click', handleControlButton);
+document.getElementById('pause').addEventListener('click', handleControlButton);
+document.getElementById('skip_fwd').addEventListener('click', handleControlButton);
+
+document.getElementById('skip_next').addEventListener('click', handleControlButton);
+document.getElementById('skip_back').addEventListener('click', handleControlButton);
+document.getElementById('skip_previous').addEventListener('click', handleControlButton); 
+document.getElementById('quit').addEventListener('click', handleControlButton); 
 }
 
-function handlegroupData(data) {
-  console.log(JSON.stringify(data));
+function handleMessageByType(type, data) {
+  switch (type) {
+    case 'time':
+      handleTime(data);
+      break;
+    case 'groupData':
+      handlegroupData(data);
+      break;
+    default:
+      console.warn('Unhandled message type:', type, data);
+  }
 }
-function handleroundData(data) {
-  console.log(JSON.stringify(data));
-}
+
+
