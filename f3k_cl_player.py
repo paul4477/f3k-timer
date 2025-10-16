@@ -85,7 +85,6 @@ class State:
 
     def next_group(self):
         try:
-            self.player.event_config['use_strict_test_time'] = not self.player.event_config.get('use_strict_test_time', False)
             self.group = next(self.iter_group)
             self.logger.info(f"NEXT_GROUP: Group: {self.group}")
             for consumer in self.player.eventConsumers:
