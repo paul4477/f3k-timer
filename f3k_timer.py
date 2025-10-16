@@ -9,52 +9,28 @@ logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(mes
 logger = logging.getLogger(__name__)
 pygame.mixer.init(frequency=44100, size=-16, channels=1)
 
-
-
-
-"""try: 
-    import plugin_pandora
-except ImportError:
-    logger.error("Could not import plugin_pandora (or maybe 'serial')")
-try:
-    import plugin_espnow
-except ImportError:
-    logger.error("Could not import plugin_espnow (or maybe the espnow library)")"""
-
 from f3k_cl_event_engine import EventEngine, Clock
 
-
-config_data = {}
-main_config = {}
-
-
-
 async def main():
-    global config_data
-    global main_config
+    config_data = {}
+    main_config = {}
     try:
         with open("config.yml", 'r') as config_file:
-            
             config_data = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))
     except Exception as e:
         logger.error(f"Error reading or parsing YAML config file: {e}")
 
     ## Create event manager    
     events = EventEngine()
+
     # player deals with updating event state
     import f3k_cl_player
     player = f3k_cl_player.Player(events)
 
-    #print(config_data)
-
-
-
     for config_section in config_data:
-        #logger.info(f"Dealing with config section: {config_section}")
         if 'name' in config_section:
-            #logger.info(f"Dealing with config section: {config_section}")
             if config_section['name'] == "main":
-                global main_config
+
                 main_config = config_section
                 player.set_config(main_config)
 
@@ -75,7 +51,14 @@ async def main():
         else:
             logger.error(f"Invalid configuration section: {config_section}")
             continue
+
+
     
+    import audio_library
+    audio_library.load_audio_library(main_config)
+
+
+
     # web_server deals with messages to and from web interface
     import f3k_cl_web_server
     web_server = f3k_cl_web_server.WebFrontend(events, web_config)
