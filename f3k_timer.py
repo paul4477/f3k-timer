@@ -4,7 +4,7 @@ import pygame
 import yaml
 import logging
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k_timer.log')
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.ERROR, filename='f3k_timer.log')
 
 logger = logging.getLogger(__name__)
 pygame.mixer.init(frequency=44100, size=-16, channels=1)
@@ -45,7 +45,7 @@ async def main():
     import f3k_cl_player
     player = f3k_cl_player.Player(events)
 
-    print(config_data)
+    #print(config_data)
 
 
 
