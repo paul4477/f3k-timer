@@ -227,9 +227,10 @@ class WebFrontend(PluginBase):
             d['group_letter'] = state.group.group_letter
             
             self.groupDict = d
-
+            js = json.dumps(d)
+            assert len(js)<250, f"Group data too large: {len(js)}"
             for q in list(self.client_queues):
-                q.put_nowait((json.dumps(d), "groupData"))
+                q.put_nowait((js, "groupData"))
 
     async def onNewRound(self, state):
         if ((not self.limit_rate(state)) and state and state.round):
@@ -244,6 +245,7 @@ class WebFrontend(PluginBase):
             'description': state.round.task_description,
             }
             self.roundDict = d
-
+            js = json.dumps(d)
+            assert len(js)<250, f"Round data too large: {len(js)}"
             for q in list(self.client_queues):
-                q.put_nowait((json.dumps(d), "roundData"))
+                q.put_nowait((js, "roundData"))
