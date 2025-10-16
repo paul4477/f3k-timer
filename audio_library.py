@@ -4,7 +4,7 @@ import logging
 from f3k_timer import main_config
 ## Voice spec - should get from config object
 
-print(main_config)
+#print(main_config)
 voice_name = ''.join(main_config.get('voice', 'en_US-lessac-medium').split('_')[1:])
 language = main_config.get('voice', 'en_US-lessac-medium').split('_')[0]
 
