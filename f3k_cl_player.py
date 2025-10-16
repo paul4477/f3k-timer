@@ -85,6 +85,7 @@ class State:
 
     def next_group(self):
         try:
+            self.player.event_config['use_strict_test_time'] = not self.player.event_config.get('use_strict_test_time', False)
             self.group = next(self.iter_group)
             self.logger.info(f"NEXT_GROUP: Group: {self.group}")
             for consumer in self.player.eventConsumers:
@@ -174,10 +175,7 @@ class Player:
         self.logger.info(f"Player configuration: {self.event_config}")
 
         if not 'prep_time' in self.event_config: self.event_config['prep_time'] = 300
-        if self.event_config['use_strict_test_time']:
-            self.event_config['test_time'] = 45
-        else:   
-            self.event_config['test_time'] = 0
+        if not 'use_strict_test_time' in self.event_config: self.event_config['use_strict_test_time'] = False
         if not 'no_fly_time' in self.event_config: self.event_config['no_fly_time'] = 60
         if not 'land_time' in self.event_config: self.event_config['land_time'] = 30
         if not 'group_separation_time' in self.event_config: self.event_config['group_separation_time'] = 120

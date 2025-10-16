@@ -287,11 +287,15 @@ class Group:
     
     def populate_sections(self):
         prep_time = self.event_config.get('prep_time', 300)
-        test_time = self.event_config.get('test_time', 0)
         no_fly_time = self.event_config.get('no_fly_time', 60)
+        if self.event_config['use_strict_test_time']:
+            test_time = 45
+        else:   
+            test_time = 0
         work_time = getattr(self.round, 'windowTime', 600)
         land_time = self.event_config.get('land_time', 30)
         group_separation_time = self.event_config.get('group_separation_time', 120)
+        #self.logger.error(f"Populating group {self.group_letter} config: prep {prep_time}, test {test_time}, no-fly {no_fly_time}, work {work_time}, land {land_time}, gap {group_separation_time}")
 
         ## Passing len(self.sections) so that the section knows its own index and we
         ## can use it to reference forward and back.
@@ -327,7 +331,10 @@ class AllUpGroup(Group):
 
     def populate_sections(self):
         prep_time = self.event_config.get('prep_time', 300)
-        test_time = self.event_config.get('test_time', 0)
+        if self.event_config['use_strict_test_time']:
+            test_time = 45
+        else:   
+            test_time = 0
         no_fly_time = self.event_config.get('no_fly_time', 60)
         work_time = getattr(self.round, 'windowTime', 600)
         land_time = self.event_config.get('land_time', 30)
@@ -399,6 +406,7 @@ class Round():
             if self.short_code.startswith("f3k_c"):
                 yield AllUpGroup(group_number, group_letter, self, groups[group_letter], self.event_config) 
             else:
+                #self.logger.error(f"Creating standard group {group_letter} with config {self.event_config}")
                 yield Group(group_number, group_letter, self, groups[group_letter], self.event_config)
 
     #def __iter__(self):
