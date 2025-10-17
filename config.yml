@@ -8,6 +8,12 @@ voice: en_GB-northern_english_male-medium
 name: web
 port: 80 # Port to run the web server on
 ---
+name: Web
+module: plugin_web_service
+object_name: WebService
+url: #http://34.32.189.105/state
+method: POST
+---
 name: Pandora
 module: plugin_pandora
 object_name: Pandora
