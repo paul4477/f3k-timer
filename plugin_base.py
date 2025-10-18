@@ -14,8 +14,9 @@ class PluginBase():
         self.events.on(f"{self.__class__.__name__}.tick")(self.onTick)
         self.events.on(f"{self.__class__.__name__}.second")(self.onSecond)
         self.events.on(f"{self.__class__.__name__}.newSection")(self.onNewSection)
-        self.events.on(f"{self.__class__.__name__}.newGroup")(self.onNewGroup)        
-        self.events.on(f"{self.__class__.__name__}.newRound")(self.onNewRound)        
+        self.events.on(f"{self.__class__.__name__}.newGroup")(self.onNewGroup)
+        self.events.on(f"{self.__class__.__name__}.newRound")(self.onNewRound)
+        self.events.on(f"{self.__class__.__name__}.defPilot")(self.onDefPilot)
 
     def is_enabled(self):
         return self._enabled
@@ -50,5 +51,7 @@ class PluginBase():
     async def onNewRound(self, state):
         #if self.enabled():
         pass               
-
+    async def onDefPilot(self, pilot_id, pilot):
+        #if self.enabled():
+        pass      
 
