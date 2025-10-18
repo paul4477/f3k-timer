@@ -20,6 +20,7 @@ class ESPNow(PluginBase):
         if not self.broadcast:
             self.logger.warning("broadcast is off but not implemented")
         #self.port.send("FF:FF:FF:FF:FF:FF", bytes)
+        assert len(bytes)<250, f"Data too large for ESPNow packet: {len(js)}"
         self.port.send("94:B9:7E:AD:0D:A0", bytes)
         ##self.logger.debug(f"ESPNow broadcast: {repr(bytes)}")
 
@@ -70,4 +71,6 @@ class ESPNow(PluginBase):
             #self.write(msg)
             self.write(json.dumps(state.get_dict()).encode('ascii'))
 
+    async def onDefPilot(self, pilot_id, pilot):
+        pass#await self.send(f"/pilot/{pilot_id}", pilot)
 
