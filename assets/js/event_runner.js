@@ -26,13 +26,13 @@ eventSource.addEventListener("time", (event) => {
   data = JSON.parse(event.data);
 
   document.getElementById('wsRXMessage').value = event.data;
-  document.getElementById('bigTime').textContent = data.time_str;
-  document.getElementById('roundNum').textContent = data.round_num;
-  document.getElementById('groupLetter').textContent = data.group_let;
+  document.getElementById('bigTime').textContent = data.time_s;
+  document.getElementById('roundNum').textContent = data.r_num;
+  document.getElementById('groupLetter').textContent = data.g_let;
   // Only append flight number if > 1, unless task_name starts with "F3K Task C"
   let showFlightNum = false;
-  if ("flight_num" in data && !isNaN(parseInt(data.flight_num))) {
-    const flightNum = parseInt(data.flight_num);
+  if ("f_num" in data && !isNaN(parseInt(data.f_num))) {
+    const flightNum = parseInt(data.f_num);
     if (
       (flightNum > 1) ||
       (typeof data.task_name === "string" && data.task_name.startsWith("F3K Task C"))
@@ -44,7 +44,7 @@ eventSource.addEventListener("time", (event) => {
     }
   }
   document.getElementById('roundDescription').textContent = data.task_name;
-  document.getElementById('sectionDescription').textContent = data.section;
+  document.getElementById('sectionDescription').textContent = data.sect;
 
   const nameRow = document.getElementById('roundNameRow')
   const numRow = document.getElementById('roundNumRow')
