@@ -3,6 +3,7 @@ import struct
 from plugin_base import PluginBase
 import json
 import requests, urllib3
+import f3k_cl_competition
 
 class ESPNow(PluginBase):
     def __init__(self, events, config):
@@ -16,13 +17,22 @@ class ESPNow(PluginBase):
         except ValueError: self.rate_limit = 1
         self.last_update = 0
     
-    def write(self, bytes):
+    def write(self, s):
         if not self.broadcast:
             self.logger.warning("broadcast is off but not implemented")
-        #self.port.send("FF:FF:FF:FF:FF:FF", bytes)
-        assert len(bytes)<250, f"Data too large for ESPNow packet: {len(js)}"
-        self.port.send("94:B9:7E:AD:0D:A0", bytes)
-        ##self.logger.debug(f"ESPNow broadcast: {repr(bytes)}")
+
+        assert len(s)<250, f"Data too large for ESPNow packet: {len(s)}"
+        
+        #self.port.send("94:B9:7E:AD:0D:A0", s) ## m5stick 1
+        if self.port:
+             self.port.send("FF:FF:FF:FF:FF:FF", s)
+        
+
+    def write_message(self, msg_type='time', data={}):
+        # time - time state
+        # p_def - pilot definition
+        # g_def - group definition
+        self.write(json.dumps({'t': msg_type, 'd': data}).encode('ascii'))
 
     def callback(self, from_mac, to_mac, msg):
         ## We're not listening for anything here.
@@ -59,18 +69,21 @@ class ESPNow(PluginBase):
             self.logger.error(f"Couldn't start ESPNow {self.device}")
 
     async def onTick(self, state):
-        #return
-        if (not self.limit_rate()) and self.port:        
-            self.write(json.dumps(state.get_dict()).encode('ascii'))
-            #msg=struct.pack("6p", state.time_str.encode("ascii"))
-            #self.write(state.get_dict())
+        if not self.limit_rate():        
+            #self.write(json.dumps(state.get_dict()).encode('ascii'))
+            self.write_message('time', state.get_dict())
 
     async def onSecond(self, state):
-        if self.port:
-            #msg=struct.pack("6p", state.time_str.encode("ascii"))
-            #self.write(msg)
-            self.write(json.dumps(state.get_dict()).encode('ascii'))
+        # Do our normal onSecond time update
+        self.write_message('time', state.get_dict())
 
-    async def onDefPilot(self, pilot_id, pilot):
-        pass#await self.send(f"/pilot/{pilot_id}", pilot)
+        ## Decide if we want to send group/pilot info (doing it less frequently)
+        ## In prep section - send pilot defs every minute and at start of section
+        if isinstance(state.section, f3k_cl_competition.PreparationSection) and \
+            ((state.second % 60 == 50) or (state.second == state.section.sectionTime)):
+            # Send each pilot definition
+            for pilot_id in state.group.pilots:
+                self.write_message('p_def', state.player.pilots[pilot_id].get_dict())
+            self.write_message('p_list', state.group.pilots)
+    
 

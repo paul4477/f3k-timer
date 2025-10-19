@@ -15,6 +15,12 @@ class Pilot:
 
     def __repr__(self):
         return f"Pilot: {self.name} ({self.id})"
+    
+    def get_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+        }
 class State:
     def __init__(self, player):
         self.logger = logging.getLogger(self.__class__.__name__)
@@ -73,6 +79,8 @@ class State:
             self.logger.info(f"NEXT_ROUND: Round: {self.round}")
             for consumer in self.player.eventConsumers:
                 self.player.events.trigger(f"{consumer.__class__.__name__}.newRound", self)
+
+
             self.iter_group = iter(self.round)
             self.next_group()
             return True

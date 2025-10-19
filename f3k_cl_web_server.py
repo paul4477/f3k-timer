@@ -228,7 +228,7 @@ class WebFrontend(PluginBase):
             
             self.groupDict = d
             js = json.dumps(d)
-            assert len(js)<250, f"Group data too large: {len(js)}"
+
             for q in list(self.client_queues):
                 q.put_nowait((js, "groupData"))
 
@@ -246,6 +246,6 @@ class WebFrontend(PluginBase):
             }
             self.roundDict = d
             js = json.dumps(d)
-            assert len(js)<250, f"Round data too large: {len(js)}"
+
             for q in list(self.client_queues):
                 q.put_nowait((js, "roundData"))
