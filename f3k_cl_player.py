@@ -131,26 +131,22 @@ class State:
         if self.player.started and (self.section is not None):
             return {
                     'slot_time': self.slot_time, 
-                    'end_time': self.end_time, 
                     'no_fly': self.is_no_fly(),
-                    'time_str': self.time_str if (self.slot_time or self.slot_time == 0) else '--:--',
-                    'round_num': self.round.round_number if self.round else '-',
-                    'group_num': self.group.group_number if self.group else '-',
-                    'group_let': self.group.group_letter if self.group else '-',
-                    'flight_num': self.section.get_flight_number() if self.section else '1',
-                    'section': self.section.get_description(),
+                    'time_s': self.time_str if (self.slot_time or self.slot_time == 0) else '--:--',
+                    'r_num': self.round.round_number if self.round else '-',
+                    'g_let': self.group.group_letter if self.group else '-',
+                    'f_num': self.section.get_flight_number() if self.section else '1',
+                    'sect': self.section.get_description(),
                     'task_name': self.round.task_name if self.round else '--------',}
         else:
             return {
                     'slot_time': 0, 
-                    'end_time': 0, 
                     'no_fly': False,
-                    'time_str': time.strftime("%H:%M", time.localtime(time.time())),
-                    'round_num': '-',
-                    'group_num': '-',
-                    'group_let': '-',
-                    'flight_num': '-',
-                    'section': 'Actual Time HH:MM',
+                    'time_s': time.strftime("%H:%M", time.localtime(time.time())),
+                    'r_num': '-',
+                    'g_let': '-',
+                    'f_num': '-',
+                    'sect': 'Actual Time HH:MM',
                     'task_name': '--------',}
     
 class Player:

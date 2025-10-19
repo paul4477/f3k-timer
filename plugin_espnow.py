@@ -21,7 +21,7 @@ class ESPNow(PluginBase):
         if not self.broadcast:
             self.logger.warning("broadcast is off but not implemented")
 
-        assert len(s)<250, f"Data too large for ESPNow packet: {len(s)}"
+        assert len(s)<250, f"Data too large for ESPNow packet: {len(s)}, <{s}>"
         
         #self.port.send("94:B9:7E:AD:0D:A0", s) ## m5stick 1
         if self.port:
@@ -32,7 +32,9 @@ class ESPNow(PluginBase):
         # time - time state
         # p_def - pilot definition
         # g_def - group definition
+        self.logger.debug(json.dumps({'t': msg_type, 'd': data}).encode('ascii'))
         self.write(json.dumps({'t': msg_type, 'd': data}).encode('ascii'))
+
 
     def callback(self, from_mac, to_mac, msg):
         ## We're not listening for anything here.
@@ -79,8 +81,8 @@ class ESPNow(PluginBase):
 
         ## Decide if we want to send group/pilot info (doing it less frequently)
         ## In prep section - send pilot defs every minute and at start of section
-        if isinstance(state.section, f3k_cl_competition.PreparationSection) and \
-            ((state.second % 60 == 50) or (state.second == state.section.sectionTime)):
+        if isinstance(state.section, f3k_cl_competition.PrepSection) and \
+            ((state.slot_time % 60 == 50) or (state.slot_time == state.section.sectionTime)):
             # Send each pilot definition
             for pilot_id in state.group.pilots:
                 self.write_message('p_def', state.player.pilots[pilot_id].get_dict())
