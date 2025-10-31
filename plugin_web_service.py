@@ -38,7 +38,7 @@ class WebService(PluginBase):
                 self.failure_count += 1
 
     async def onSecond(self, state):
-        await self.send("/state", state.get_dict())
+        await self.send(f"/{getattr(state.player, 'event_id', 0)}/state", state.get_dict())
 
     #async def onDefPilot(self, pilot_id, pilot):
     #    await self.send(f"/pilot/{pilot_id}", pilot)

@@ -164,6 +164,7 @@ class Player:
         self.last_announced = 1
         
         self.pilots = {}
+        self.event_id = None
         self.eventConsumers = []
 
     def __iter__(self):
@@ -198,6 +199,7 @@ class Player:
         self.events.on("player.quit")(self.quit)
         
     async def load_data(self, raw_json):
+        self.event_id = raw_json['event']['event_id']
         self.rounds = f3k_cl_competition.make_rounds(raw_json, self.event_config)
         self.logger.info(f"Loaded {len(self.rounds)} rounds from event data")
 
