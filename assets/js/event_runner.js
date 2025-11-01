@@ -71,21 +71,20 @@ eventSource.addEventListener("time", (event) => {
 
 // General event handler for control buttons
 async function handleControlButton(event) {
-  const buttonId = event.target.closest('button').id;
+  const button = event.target.closest('button');
   
   // Add confirmation for quit button
-  if (buttonId === 'quit') {
+  if (button.id === 'quit') {
     if (!confirm('Are you sure you want to quit?')) {
       return; // User cancelled, don't proceed
     }
   }
-  
-  if (buttonId === 'start') {
-    event.target.disabled = true; // Disable start button immediately
 
+  if (button.id === 'start') {
+    button.disabled = true; // Disable start button immediately
   }
 
-  const endpoint = `/control/${buttonId}`;
+  const endpoint = `/control/${button.id}`;
   
   try {
     const response = await fetch(endpoint, {
