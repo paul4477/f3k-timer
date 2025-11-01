@@ -25,7 +25,6 @@ eventSource.addEventListener("time", (event) => {
   //console.log(typeof event.data);
   data = JSON.parse(event.data);
 
-  document.getElementById('wsRXMessage').value = event.data;
   document.getElementById('bigTime').textContent = data.time_s;
   document.getElementById('roundNum').textContent = data.r_num;
   document.getElementById('groupLetter').textContent = data.g_let;
@@ -73,6 +72,19 @@ eventSource.addEventListener("time", (event) => {
 // General event handler for control buttons
 async function handleControlButton(event) {
   const buttonId = event.target.closest('button').id;
+  
+  // Add confirmation for quit button
+  if (buttonId === 'quit') {
+    if (!confirm('Are you sure you want to quit?')) {
+      return; // User cancelled, don't proceed
+    }
+  }
+  
+  if (buttonId === 'start') {
+    event.target.disabled = true; // Disable start button immediately
+
+  }
+
   const endpoint = `/control/${buttonId}`;
   
   try {
@@ -97,6 +109,7 @@ document.getElementById('skip_next').addEventListener('click', handleControlButt
 document.getElementById('skip_back').addEventListener('click', handleControlButton);
 document.getElementById('skip_previous').addEventListener('click', handleControlButton); 
 document.getElementById('quit').addEventListener('click', handleControlButton); 
+document.getElementById('reset').addEventListener('click', handleControlButton);
 }
 
 

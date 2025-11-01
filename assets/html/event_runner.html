@@ -115,19 +115,6 @@
         </div>
       </div>
       <div class="row p-1 mx-auto">
-        <a class="btn btn-warning" data-bs-toggle="collapse" href="#debugArea" role="button" aria-expanded="false"
-          aria-controls="collapseExample">
-          Show/Hide Debug
-        </a>
-      </div>
-      <div class="row p-1 mx-auto">
-        <a class="btn btn-warning" data-bs-toggle="collapse" href="#wsSendArea" role="button" aria-expanded="false"
-          aria-controls="collapseExample">
-          Show/Hide WS Send
-        </a>
-      </div>
-
-      <div class="row p-1 mx-auto">
         <button id="reset" class="btn btn-warning">
           <svg xmlns="http://www.w3.org/2000/svg" height="6vw" fill="currentColor" class="bi bi-arrow-counterclockwise"
             viewBox="0 0 16 16">
@@ -144,19 +131,6 @@
             <path
               d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z" />
           </svg> Quit</button>
-      </div>
-    </div>
-
-    <div class="collapse" id="debugArea">
-      <div class="card card-body">
-        <textarea id="wsRXMessage" rows="4" cols="50" placeholder=""></textarea><br>
-      </div>
-    </div>
-    <div class="collapse" id="wsSendArea">
-      <div class="card card-body">
-        <textarea id="wsTXMessage" rows="4" cols="50" placeholder="Enter message to send"></textarea><br>
-        <button id="sendBtn">Send to WebSocket</button><br>
-
       </div>
     </div>
   </div>
