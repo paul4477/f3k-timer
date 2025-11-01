@@ -40,9 +40,29 @@ class State:
     def __repr__(self):
         return f"State(round={self.round}, group={self.group}, section={self.section}, slot_time={self.slot_time}, end_time={self.end_time}, no-fly={self.is_no_fly()})"
 
-    def start(self, round=1, group=1):
+    def start(self):
         self.iter_round = iter(self.player.rounds)
         self.next_round()
+
+    def goto(self, round=1, group=1):
+        # Reset iterators and step to desired round and group
+        # Don't use the next_x functions to avoid firing events
+        self.iter_round = iter(self.player.rounds)
+        self.round = next(self.iter_round)
+        while self.round.round_number != round:
+            self.logger.info(f"Advancing round: round {self.round}")
+            self.round = next(self.iter_round)
+            
+        self.iter_group = iter(self.round)
+        self.group = next(self.iter_group)  
+        while self.group.group_number < group:
+            self.logger.info(f"Advancing group: group {self.group}")
+            self.group = next(self.iter_group)  
+            
+        self.iter_section = iter(self.group)
+        self.next_section() # This will fire events for the section start
+        
+
 
     def resume(self):
         self.end_time = time.time() + self.slot_time
@@ -197,6 +217,7 @@ class Player:
         self.events.on("player.goto")(self.goto)
         self.events.on("player.stop")(self.stop)
         self.events.on("player.quit")(self.quit)
+        self.events.on("player.goto")(self.goto)
         
     async def load_data(self, raw_json):
         self.event_id = raw_json['event']['event_id']
@@ -243,14 +264,11 @@ class Player:
         self.state.next()
               
 
-    async def goto(self, round=1, group=1):
-        await self.stop()
-        try: 
-            self.state.round = self.rounds[round-1]
-            self.state.slot_time = self.state.round.windowTime
-            self.state.end_time = None
-        except IndexError:
-            self.logger.error(f"Invalid round in goto: {round}")
+    async def goto(self, round=2, group=2):
+        #await self.stop()
+        self.logger.info(f"Going to round {round}, group {group}")
+        self.state.goto(round, group)
+
     async def quit(self):
         self.running = False
     async def stop(self):

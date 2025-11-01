@@ -39,11 +39,11 @@ class WebFrontend(PluginBase):
                 web.get("/view", self.handle_view_page),
                 
                 web.post("/control/{command}", self.handle_control),
+                web.get("/goto/{round:[0-9]+}/{group:[0-9]+}", self.handle_goto),
                 web.get("/state-stream", self.handle_state_stream),
 
-                web.get("/reset", self.handle_reset),
+                #web.get("/reset", self.handle_reset),
                 web.post("/timesync/", self.handle_timesync),
-                #web.get("/ws/", self.ws_handler),
                 web.post("/load_event", self.handle_load_event),
 
                 web.get("/groupData", self.handle_groupData),
@@ -167,6 +167,10 @@ class WebFrontend(PluginBase):
         else:
             #return web.Response(status=200, text=f"Event load requested")
             raise web.HTTPFound('/run')
+
+    async def handle_goto(self, request):
+        self.events.trigger(f"player.goto", int(request.match_info['round']), int(request.match_info['group']))
+        return web.Response(status=200, text=f"Done")
 
     async def handle_control(self, request):
         self.events.trigger(f"player.{request.match_info['command']}")
