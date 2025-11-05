@@ -46,6 +46,9 @@ class Section:
         except IndexError: 
             self.logger.debug(f"Failed to get_next_section. {self.group.sections}, index: {self.section_index+1}")
             return None
+        except AttributeError:
+            self.logger.debug(f"Failed to get_next_section. Group: {self.group}")
+            return None
     def get_previous_section(self):
         try: return self.group.sections[self.section_index-1]
         except IndexError: return None
@@ -251,6 +254,8 @@ class AnnounceSection(Section):
         self.audio_times = {}
         
 class ShowTimeSection(GapSection):
+    def __repr__(self):
+        return f"Section {self.get_description()} "
     def get_serial_code(self):
         return "DT"
     def get_description(self):

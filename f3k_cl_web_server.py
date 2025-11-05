@@ -3,7 +3,7 @@ import json
 import time
 import logging
 import os
-from aiohttp import request, web, ClientConnectionError
+from aiohttp import web, ClientConnectionError
 from aiohttp_sse import sse_response
 import jinja2
 import aiohttp_jinja2
@@ -226,7 +226,7 @@ class WebFrontend(PluginBase):
 
     async def onTick(self, state):
         # Send the bits of state needed to the web clients
-        if ((not self.limit_rate(state)) and state and state.round):
+        if ((not self.limit_rate(state)) and state and state.section):
             d = state.get_dict()
             for q in list(self.client_queues):
                 try: 

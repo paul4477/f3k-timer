@@ -186,10 +186,14 @@ class Player:
         self.pilots = {}
         self.event_id = None
         self.eventConsumers = []
+        self.event_config = None
 
     def __iter__(self):
         return (rnd for rnd in self.rounds)
     
+    def init_pre_comp(self):
+        self.state.section = f3k_cl_competition.ShowTimeSection(0, None, None, 0, event_config=self.event_config)
+        
     def is_running(self):
         # or more complex check that queries list of rounds and state object
         return self.running
@@ -240,6 +244,7 @@ class Player:
         
         if not self.started:
             self.started = True
+            self.state = State(self)
             self.state.start()
 
     async def pause(self):
@@ -357,17 +362,24 @@ class Player:
                 # Make sure only do this once per "new" second.
                 self.last_announced = self.state.slot_time
 
-        # This clause will be triggered when our section time has expired
-        # and it is therefore the end of that section:
-        if self.started and self.state.end_time and now >= self.state.end_time:
-            self.logger.info(f"End of section {self.state.section} in group {self.state.group}")   
-            # Reset this
-            #self.last_announced = None
-            self.state.clear_section()
+            # This clause will be triggered when our section time has expired
+            # and it is therefore the end of that section:
+            if now >= self.state.end_time:
+                self.logger.info(f"End of section {self.state.section} in group {self.state.group}")   
+                # Reset this
+                #self.last_announced = None
+                self.state.clear_section()
 
-            if not self.state.next():
-                        self.logger.info("End of event")
-                        self.running = True # keep program alive
-                        self.started = False                
+                if not self.state.next():
+                            self.logger.info("End of event")
+                            self.running = True # keep program alive
+                            self.started = False                
+        elif isinstance(self.state.section, f3k_cl_competition.ShowTimeSection):
+            await asyncio.sleep(1)
+            for consumer in self.eventConsumers:
+                self.events.trigger(f"{consumer.__class__.__name__}.second", self.state)
+                self.events.trigger(f"{consumer.__class__.__name__}.tick", self.state)
+
+
 
 
