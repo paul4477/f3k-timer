@@ -99,8 +99,8 @@ async function handleControlButton(event) {
   const button = event.target.closest('button');
   
   // Add confirmation for quit button
-  if (button.id === 'quit') {
-    if (!confirm('Are you sure you want to quit?')) {
+  if (button.id === 'quit' || button.id === 'reset') {
+    if (!confirm('Are you sure?')) {
       return; // User cancelled, don't proceed
     }
   }
@@ -120,6 +120,10 @@ async function handleControlButton(event) {
     if (!response.ok) {
       console.error(`Error: ${response.status} ${response.statusText}`);
     }
+
+   if (button.id === 'reset') {
+    location.reload()
+  }
   } catch (err) {
     console.error(`Error making request to ${endpoint}: ${err}`);
   }

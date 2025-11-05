@@ -93,15 +93,6 @@ class WebFrontend(PluginBase):
             content_type="application/json", body=body,
         )    
 
-    async def handle_reset(self, request):
-        self.logger.info(f"Resetting event data, {self.event_data_loaded}")
-        if self.event_data_loaded: self.event_data_loaded = False
-        self.events.trigger(f"player.stop")
-        
-        raise web.HTTPFound('/')
-
-
-
 
     async def handle_default_page_old(self, request):
         self.logger.info(f"Serving default, {self.event_data_loaded}")
@@ -194,6 +185,9 @@ class WebFrontend(PluginBase):
 
     async def handle_control(self, request):
         self.events.trigger(f"player.{request.match_info['command']}")
+        if request.match_info['command']=="reset":
+            self.event_data_loaded = False
+            raise web.HTTPFound('/')
         return web.Response(status=200, text=f"Done")
     
     async def startup(self):
@@ -263,8 +257,7 @@ class WebFrontend(PluginBase):
         if ((not self.limit_rate(state)) and state and state.round):
             d = {}
             d['round_number'] = state.round.round_number
-            d['group_count'] = len(state.round.groups)
-            d['window_time'] = state.round.windowTime
+            d['group_count'] = state.round.group_count
             d['task'] = {
             'short_code': state.round.short_code,
             'short_name': state.round.short_name,

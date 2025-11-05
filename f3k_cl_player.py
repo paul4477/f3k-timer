@@ -221,7 +221,7 @@ class Player:
         self.events.on("player.goto")(self.goto)
         self.events.on("player.stop")(self.stop)
         self.events.on("player.quit")(self.quit)
-        self.events.on("player.goto")(self.goto)
+        self.events.on("player.reset")(self.reset)
         
     async def load_data(self, raw_json):
         self.event_id = raw_json['event']['event_id']
@@ -246,6 +246,17 @@ class Player:
             self.started = True
             self.state = State(self)
             self.state.start()
+
+    async def reset(self):
+        self.logger.info("Resetting event player")
+        self.rounds = []
+        self.state = State(self)
+        self.started = False
+        self.raw_json = None
+        self.last_announced = 1
+        self.pilots = {}
+        self.event_id = None        
+        self.init_pre_comp()
 
     async def pause(self):
         if self.started: self.started = False
@@ -334,7 +345,9 @@ class Player:
                 #                     )
                 #                )
 
-                self.state.next_section()
+                try: self.state.next_section()
+                except TypeError: # could have no iterator
+                    pass
                 return # loop again
             ## Return to outer loop
             return
