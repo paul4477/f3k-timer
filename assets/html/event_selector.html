@@ -108,13 +108,11 @@
         dateTo: document.getElementById("date-to").value
       };
       setCookie('eventSearchForm', formData);
-      console.log("Form data saved to cookie:", formData);
     }
 
     function loadFormData() {
       const savedData = getCookie('eventSearchForm');
       if (savedData) {
-        console.log("Loaded form data from cookie:", savedData);
         document.getElementById("search-box").value = savedData.searchBox || "";
         document.getElementById("event-type").value = savedData.eventType || "f3k";
         document.getElementById("country").value = savedData.country || "GB";
