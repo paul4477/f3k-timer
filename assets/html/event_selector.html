@@ -74,6 +74,64 @@
       return date.toISOString().split("T")[0];
     }
 
+    
+    // Cookie helper functions
+    function setCookie(name, value, days = 30) {
+      const expires = new Date();
+      expires.setTime(expires.getTime() + (days * 24 * 60 * 60 * 1000));
+      document.cookie = `${name}=${encodeURIComponent(JSON.stringify(value))};expires=${expires.toUTCString()};path=/`;
+    }
+
+    function getCookie(name) {
+      const nameEQ = name + "=";
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) {
+          try {
+            return JSON.parse(decodeURIComponent(c.substring(nameEQ.length, c.length)));
+          } catch (e) {
+            return null;
+          }
+        }
+      }
+      return null;
+    }
+
+    function saveFormData() {
+      const formData = {
+        searchBox: document.getElementById("search-box").value,
+        eventType: document.getElementById("event-type").value,
+        country: document.getElementById("country").value,
+        dateFrom: document.getElementById("date-from").value,
+        dateTo: document.getElementById("date-to").value
+      };
+      setCookie('eventSearchForm', formData);
+      console.log("Form data saved to cookie:", formData);
+    }
+
+    function loadFormData() {
+      const savedData = getCookie('eventSearchForm');
+      if (savedData) {
+        console.log("Loaded form data from cookie:", savedData);
+        document.getElementById("search-box").value = savedData.searchBox || "";
+        document.getElementById("event-type").value = savedData.eventType || "f3k";
+        document.getElementById("country").value = savedData.country || "GB";
+        document.getElementById("date-from").value = savedData.dateFrom || "";
+        document.getElementById("date-to").value = savedData.dateTo || "";
+      } else {
+        // Fallback to defaults if no cookie
+        const defaults = getDefaultDateRange();
+        document.getElementById("date-from").value = defaults.date_from;
+        document.getElementById("date-to").value = defaults.date_to;
+      }
+    }
+
+    function formatDate(date) {
+      return date.toISOString().split("T")[0];
+    }
+
     function getDefaultDateRange() {
       const now = new Date();
       const dateFrom = new Date(now);
@@ -82,7 +140,6 @@
       dateTo.setDate(dateTo.getDate() + 14);
       return { date_from: formatDate(dateFrom), date_to: formatDate(dateTo) };
     }
-
     function buildQuery(params) {
       return new URLSearchParams(params).toString();
     }
@@ -266,15 +323,14 @@ function renderEventDetails(details) {
 
     // wire up search button
     document.getElementById("search-btn").addEventListener("click", () => {
+      saveFormData();
       const query = document.getElementById("search-box").value.trim();
       populateEvents(query);
     });
 
     // initialize date pickers and initial load
     window.onload = () => {
-      const defaults = getDefaultDateRange();
-      document.getElementById("date-from").value = defaults.date_from;
-      document.getElementById("date-to").value = defaults.date_to;
+      loadFormData();
       populateEvents();
     };
   </script>
