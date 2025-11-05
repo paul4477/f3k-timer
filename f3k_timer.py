@@ -4,7 +4,7 @@ import pygame
 import yaml
 import logging
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.ERROR, filename='f3k_timer.log')
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k_timer.log')
 
 logger = logging.getLogger(__name__)
 pygame.mixer.init(frequency=44100, size=-16, channels=1)
@@ -61,7 +61,7 @@ async def main():
 
     # web_server deals with messages to and from web interface
     import f3k_cl_web_server
-    web_server = f3k_cl_web_server.WebFrontend(events, web_config)
+    web_server = f3k_cl_web_server.WebFrontend(events, web_config, player)
     await web_server.startup()
     player.add_event_consumer(web_server)
     
@@ -73,6 +73,7 @@ async def main():
     import f3k_cl_rtvoice
     player.add_event_consumer(f3k_cl_rtvoice.Voice(main_config.get('voice', 'en_US-lessac-medium'), events))
 
+    player.init_pre_comp()
     ## External devices
     ## Serial interface to Pandora base station
     
