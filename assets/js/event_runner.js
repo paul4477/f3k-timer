@@ -69,6 +69,31 @@ eventSource.addEventListener("time", (event) => {
   }
 });
 
+async function handleGoToButton() {
+  const roundValue = document.getElementById('roundSelect').value;
+  const groupValue = document.getElementById('groupSelect').value;
+  const endpoint = `/goto/${roundValue}/${groupValue}`;
+  
+  // Add confirmation for quit button
+  
+    if (!confirm('Are you sure?')) {
+      return; // User cancelled, don't proceed
+    }
+  
+
+  try {
+    const response = await fetch(endpoint, {
+      method: 'GET'
+    });
+    
+    if (!response.ok) {
+      console.error(`Error: ${response.status} ${response.statusText}`);
+    }
+  } catch (err) {
+    console.error(`Error making request to ${endpoint}: ${err}`);
+  }
+};
+
 // General event handler for control buttons
 async function handleControlButton(event) {
   const button = event.target.closest('button');
@@ -109,6 +134,13 @@ document.getElementById('skip_back').addEventListener('click', handleControlButt
 document.getElementById('skip_previous').addEventListener('click', handleControlButton); 
 document.getElementById('quit').addEventListener('click', handleControlButton); 
 document.getElementById('reset').addEventListener('click', handleControlButton);
+
+// Add this to your onBodyLoad() function or wherever you set up event listeners
+document.getElementById('goto').addEventListener('click', handleGoToButton);
+  
+  
+
+
 }
 
 

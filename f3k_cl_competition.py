@@ -374,13 +374,28 @@ class Round():
         self.task_name = f3k_task_timing_data[self.short_code]['name']
         self.task_description = f3k_task_timing_data[self.short_code]['description']
         self.windowTime = f3k_task_timing_data[self.short_code]['windowTime']
-        self.groups = []
+        self.group_count = 0
 
     def __repr__(self):
         return f"Round {self.round_number:2d} {self.short_name}, {int(self.windowTime/60):2d}mins"
 
     def set_group_data(self, prelim_standings):
         self.standings_data = prelim_standings
+        ## Count groups
+        
+        for pilot in self.standings_data:
+            if len(pilot['rounds']) >= 0:
+                # Only look at this round
+                try: round_data = pilot['rounds'][self.round_number - 1]
+                except IndexError:
+                    self.logger.warning(f"Pilot {pilot['pilot_id']} has no data for round {self.round_number}")
+                    continue
+
+            flight_group = round_data['flights'][0]['flight_group']
+            letters= "-ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Adding '-' so index matches group number
+            group_number = letters.index(flight_group)
+            self.group_count = max(self.group_count, group_number)
+
     def __iter__(self):
         groups = {}
         letters= "-ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Adding '-' so index matches group number

@@ -10,7 +10,7 @@
     integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI"
     crossorigin="anonymous"></script>
   <script src="/assets/js/event_runner.js"></script>
-    <title>Event Search</title>
+  <title>Event Search</title>
   <style>
     /* small UX nicety */
     #event-list li {
@@ -31,7 +31,7 @@
 <body class="font-monospace lh-sm" onload="onBodyLoad()">
   <!-- On start, make button inactive. Pausing makes it active again.-->
   <!-- Add confirm for reset and quit-->
-  <div class="container">
+  <div class="container-lg">
     <div id="roundNumRow" class="row bg-danger text-white fw-bold fs-2">
       <div class="col-3">
         Round:
@@ -94,7 +94,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" height="10vw" fill="currentcolor" class="bi bi-pause-circle-fill"
               viewBox="0 0 16 16">
               <path
-                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M6.25 5C5.56 5 5 5.56 5 6.25v3.5a1.25 1.25 0 1 0 2.5 0v-3.5C7.5 5.56 6.94 5 6.25 5m3.5 0c-.69 0-1.25.56-1.25 1.25v3.5a1.25 1.25 0 1 0 2.5 0v-3.5C11 5.56 10.44 5 9.75 5" />
+                d="M0 12V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2m6.25-7C5.56 5 5 5.56 5 6.25v3.5a1.25 1.25 0 1 0 2.5 0v-3.5C7.5 5.56 6.94 5 6.25 5m3.5 0c-.69 0-1.25.56-1.25 1.25v3.5a1.25 1.25 0 1 0 2.5 0v-3.5C11 5.56 10.44 5 9.75 5" />
             </svg></button>
           <button id="skip_fwd" type="button" class="btn btn-primary">
             <!-- Forward -->
@@ -114,23 +114,85 @@
             </svg></button>
         </div>
       </div>
-      <div class="row p-1 mx-auto">
-        <button id="reset" class="btn btn-warning">
-          <svg xmlns="http://www.w3.org/2000/svg" height="6vw" fill="currentColor" class="bi bi-arrow-counterclockwise"
+
+
+            <div class="row p-1 mx-auto">
+        <a class="btn btn-warning" data-bs-toggle="collapse" href="#gotoGroupRound" role="button" aria-expanded="false"
+          aria-controls="collapseExample">
+          <svg xmlns="http://www.w3.org/2000/svg" height="6vw" fill="currentColor" class="bi bi-caret-down-square-fill"
             viewBox="0 0 16 16">
-            <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z" />
             <path
-              d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466" />
+              d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm4 4a.5.5 0 0 0-.374.832l4 4.5a.5.5 0 0 0 .748 0l4-4.5A.5.5 0 0 0 12 6z" />
           </svg>
-          Reset Event
+          Show/Hide Goto Group/Round
         </a>
       </div>
+      <div class="collapse" id="gotoGroupRound">
+      <div class="row p-3 mx-auto ">
+        
+        <div class="col">
+
+          <form class="form" id="goto-form" onsubmit="return false;"></form>
+          <label class="form-label" for="round">Round:</label>
+          <select id="roundSelect" name="round">
+            {{ rounds|safe }}
+          </select>
+
+
+          <label class="form-label" for="group">Group:</label>
+          <select id="groupSelect" name="group">
+            {{ groups|safe }}
+          </select>
+          </form>
+
+        </div>
+        <div class="col-3 align-self-center">
+          <button id="goto" type="button" class="btn btn-primary align-middle">
+            <!-- Skip Forward -->
+            <svg xmlns="http://www.w3.org/2000/svg" height="8vw" fill="currentColor"
+              class="bi bi-arrow-right-circle-fill" viewBox="0 0 16 16">
+              <path
+                d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0M4.5 7.5a.5.5 0 0 0 0 1h5.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5z" />
+            </svg></button>
+        </div>
+
+
+
+      </div>
+</div>
+
       <div class="row p-1 mx-auto">
-        <button id="quit" class="btn btn-danger"><svg xmlns="http://www.w3.org/2000/svg" width="6vw" height="6vw"
-            fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16">
+        <a class="btn btn-warning" data-bs-toggle="collapse" href="#extraControls" role="button" aria-expanded="false"
+          aria-controls="collapseExample">
+          <svg xmlns="http://www.w3.org/2000/svg" height="6vw" fill="currentColor" class="bi bi-caret-down-square-fill"
+            viewBox="0 0 16 16">
             <path
-              d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z" />
-          </svg> Quit</button>
+              d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm4 4a.5.5 0 0 0-.374.832l4 4.5a.5.5 0 0 0 .748 0l4-4.5A.5.5 0 0 0 12 6z" />
+          </svg>
+          Show/Hide Shutdown/Reset
+        </a>
+      </div>
+      <div class="collapse" id="extraControls">
+
+
+        <div class="row p-1 mx-auto">
+          <button id="reset" class="btn btn-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" height="6vw" fill="currentColor"
+              class="bi bi-arrow-counterclockwise" viewBox="0 0 16 16">
+              <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z" />
+              <path
+                d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466" />
+            </svg>
+            Reset Event
+            </a>
+        </div>
+        <div class="row p-1 mx-auto">
+          <button id="quit" class="btn btn-danger"><svg xmlns="http://www.w3.org/2000/svg" width="6vw" height="6vw"
+              fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16">
+              <path
+                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0M5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293z" />
+            </svg> Quit</button>
+        </div>
       </div>
     </div>
   </div>

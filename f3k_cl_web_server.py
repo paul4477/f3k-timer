@@ -3,8 +3,10 @@ import json
 import time
 import logging
 import os
-from aiohttp import web, ClientConnectionError
+from aiohttp import request, web, ClientConnectionError
 from aiohttp_sse import sse_response
+import jinja2
+import aiohttp_jinja2
 from plugin_base import PluginBase
 
 CORS_HEADERS = {
@@ -13,11 +15,12 @@ CORS_HEADERS = {
 }
 
 class WebFrontend(PluginBase):
-    def __init__(self, events, config):
+    def __init__(self, events, config, player=None):
         super().__init__(events, config)
         self.port = config.get('port', 8080)
         self.runner = None
         self.app = web.Application()
+        self.player = player
         self.ticks = 0
         self.clients = set()
         self.client_queues = set()
@@ -35,8 +38,8 @@ class WebFrontend(PluginBase):
                 web.static("/assets/", os.path.join(os.path.dirname(__file__), "assets")),
                 web.get("/", self.handle_default_page),
                 
-                web.get("/run", self.handle_run_page),
-                web.get("/view", self.handle_view_page),
+                #web.get("/run", self.handle_run_page),
+                #web.get("/view", self.handle_view_page),
                 
                 web.post("/control/{command}", self.handle_control),
                 web.get("/goto/{round:[0-9]+}/{group:[0-9]+}", self.handle_goto),
@@ -100,9 +103,9 @@ class WebFrontend(PluginBase):
 
 
 
-    async def handle_default_page(self, request):
+    async def handle_default_page_old(self, request):
         self.logger.info(f"Serving default, {self.event_data_loaded}")
-        # Serve the static HTML file
+        
         if self.event_data_loaded:
             file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
         else:
@@ -114,21 +117,38 @@ class WebFrontend(PluginBase):
         except FileNotFoundError:
             return web.Response(status=404, text="Default page not found")
 
-    async def handle_run_page(self, request):
+    async def handle_default_page(self, request):
         self.logger.info(f"Serving run, {self.event_data_loaded}")
-        if self.event_data_loaded:# Serve the static HTML file
-            file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_runner.html")
+        if self.event_data_loaded:# Serve the event runner page
+            template_path = "event_runner.html"
+            rounds_options = ""
+            groups_options = ""
+            max_groups = 0
+            for round in self.player.rounds:
+               rounds_options += f'<option value="{round.round_number}">{round.round_number}: {round.short_name}</option>'
+               max_groups = max(max_groups, round.group_count)
+            for group in range(1, max_groups + 1):
+               groups_options += f'<option value="{group}">{chr(64+group)}</option>'
+            self.logger.debug(f"Round options HTML: {rounds_options}")
+            self.logger.debug(f"Group options HTML: {groups_options}")
+            context = {
+                'rounds': rounds_options,
+                'groups': groups_options
+            }
+            response = aiohttp_jinja2.render_template(template_path, request,
+                                          context=context)
+            return response
+        else:
+            file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_selector.html")
             try:
                 with open(file_path, "r", encoding="utf-8") as f:
                     content = f.read()
                 return web.Response(text=content, content_type="text/html")
             except FileNotFoundError:
-                return web.Response(status=404, text="Run page not found")
-        else:
-            raise web.HTTPFound('/')
+                return web.Response(status=404, text="Default page not found")
 
     async def handle_view_page(self, request):
-        self.logger.info(f"Serving run, {self.event_data_loaded}")
+        self.logger.info(f"Serving view, {self.event_data_loaded}")
         if self.event_data_loaded:# Serve the static HTML file
             file_path = os.path.join(os.path.dirname(__file__), "assets", "html", "event_viewer.html")
             try:
@@ -166,7 +186,7 @@ class WebFrontend(PluginBase):
             return web.Response(status=400, text="Missing 'event' in request")
         else:
             #return web.Response(status=200, text=f"Event load requested")
-            raise web.HTTPFound('/run')
+            raise web.HTTPFound('/')
 
     async def handle_goto(self, request):
         self.events.trigger(f"player.goto", int(request.match_info['round']), int(request.match_info['group']))
@@ -178,6 +198,9 @@ class WebFrontend(PluginBase):
     
     async def startup(self):
         self.runner = web.AppRunner(self.app)
+        aiohttp_jinja2.setup(
+            self.app, loader=jinja2.FileSystemLoader(os.path.join(os.getcwd(), "assets/html"))
+            )
         await self.runner.setup()
         site = web.TCPSite(self.runner, "0.0.0.0", self.port)
         await site.start()
