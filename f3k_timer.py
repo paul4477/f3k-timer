@@ -4,7 +4,7 @@ import pygame
 import yaml
 import logging
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k_timer.log')
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.ERROR, filename='f3k_timer.log')
 
 logger = logging.getLogger(__name__)
 pygame.mixer.init(frequency=44100, size=-16, channels=1)
@@ -20,25 +20,28 @@ async def main():
     except Exception as e:
         logger.error(f"Error reading or parsing YAML config file: {e}")
 
-    ## Create event manager    
+    ## Create event manager for passing events around    
     events = EventEngine()
 
     # player deals with updating event state
     import f3k_cl_player
     player = f3k_cl_player.Player(events)
 
+    # Config for the main program and web server + plugins
     for config_section in config_data:
         if 'name' in config_section:
+            ## Main config for prep time, use test time etc
             if config_section['name'] == "main":
 
                 main_config = config_section
                 player.set_config(main_config)
 
+            ## Web server config - not likely to change from defaults
             elif config_section['name'] == "web":
                 web_config = config_section
 
+            ## Plugins - a section for each. We ignore sections that don't have module/object_name defined
             elif 'module' in config_section and 'object_name' in config_section:
-                #logger.info(f"Dealing with config section: {config_section}")
                 try:
                     module = importlib.import_module(config_section['module'])
                     plugin_object = getattr(module, config_section['object_name'])
@@ -51,13 +54,10 @@ async def main():
         else:
             logger.error(f"Invalid configuration section: {config_section}")
             continue
-
-
     
+    # Initialise audio library
     import audio_library
     audio_library.load_audio_library(main_config)
-
-
 
     # web_server deals with messages to and from web interface
     import f3k_cl_web_server
@@ -73,16 +73,8 @@ async def main():
     import f3k_cl_rtvoice
     player.add_event_consumer(f3k_cl_rtvoice.Voice(main_config.get('voice', 'en_US-lessac-medium'), events))
 
+    # Initialize player to not running state with "ShowTimeSection"
     player.init_pre_comp()
-    ## External devices
-    ## Serial interface to Pandora base station
-    
-    #player.add_event_consumer(plugin_pandora.Pandora(events))
-
-    ## WiFi (ESPNow) broadcast interface to anything that is listening
-    ## requires wlan device in appropriate state (see start.sh)
-    
-    #player.add_event_consumer(plugin_espnow.ESPNow(events))
     
     clock = Clock()
     TIMEREVENT = pygame.event.custom_type()
@@ -98,7 +90,6 @@ async def main():
             elif ev.type == TIMEREVENT:
                 fps = await clock.get_fps()
                 logger.debug(f"fps: {fps:.1f}")
-
         
         await player.update()
         
