@@ -325,3 +325,139 @@ url: https://fxtiming.ddns.net/api/event/
 - Service management via systemd
 - Log rotation for production use
 - Cookie-based state persistence for user preferences
+
+## State Flow Diagram
+
+### Player and State Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Uninitialized: Player Created
+
+    Uninitialized --> PreComp: init_pre_comp()
+    PreComp --> DataLoaded: load_data(raw_json)
+
+    DataLoaded --> Ready: Data Available
+    Ready --> Running: start()
+
+    Running --> Paused: pause()
+    Paused --> Running: pause() (resume)
+
+    Running --> AnnounceRound: next_round()
+    AnnounceRound --> AnnounceGenerating: generate_and_store_sound
+    AnnounceGenerating --> AnnouncePlaying: sound ready
+    AnnouncePlaying --> PrepSection: announcement complete
+
+    PrepSection --> NextSection: time expires / skip_next()
+    NextSection --> WorkSection: next_section()
+    WorkSection --> NextSection: time expires
+    NextSection --> LandSection: next_section()
+    LandSection --> NextSection: time expires
+    NextSection --> GapSection: next_section()
+
+    GapSection --> NextGroup: time expires / next_group()
+    NextGroup --> AnnounceRound: more groups
+
+    NextGroup --> NextRound: no more groups
+    NextRound --> AnnounceRound: more rounds
+    NextRound --> EventComplete: no more rounds
+
+    Running --> TimeAdjusted: skip_fwd() / skip_back() / skip_previous()
+    TimeAdjusted --> Running: time adjusted
+
+    Running --> GotoRound: goto(round, group)
+    GotoRound --> Running: jumped to position
+
+    Running --> Stopped: stop()
+    Paused --> Stopped: stop()
+    Stopped --> Running: start()
+
+    EventComplete --> ShowTime: event finished
+    ShowTime --> ShowTime: display clock
+
+    DataLoaded --> Reset: reset()
+    Ready --> Reset: reset()
+    Running --> Reset: reset()
+    Paused --> Reset: reset()
+    Stopped --> Reset: reset()
+    EventComplete --> Reset: reset()
+    Reset --> Uninitialized: cleared
+
+    Running --> Shutdown: quit()
+    Paused --> Shutdown: quit()
+    Shutdown --> [*]
+
+    note right of AnnounceRound
+        Generates speech:
+        "Round X, Group Y"
+        + pilot list
+    end note
+
+    note right of PrepSection
+        Sections iterate:
+        prep → work → land → gap
+        (varies by task type)
+    end note
+
+    note right of ShowTime
+        Displays actual time
+        when not in competition
+    end note
+```
+
+### State Transitions Details
+
+**Initialization Flow:**
+
+1. `Player` created with `EventEngine` reference
+2. `init_pre_comp()` sets up `ShowTimeSection` (displays actual time)
+3. `load_data()` parses event JSON, creates rounds/groups/pilots
+4. Player enters `Ready` state
+
+**Competition Flow:**
+
+1. `start()` creates new `State` object and calls `state.start()`
+2. `state.start()` initializes round iterator and calls `next_round()`
+3. `next_round()` fires `newRound` event, initializes group iterator
+4. `next_group()` fires `newGroup` event, initializes section iterator
+5. `next_section()` fires `newSection` event, sets `slot_time` and `end_time`
+
+**Timing Loop (in `update()`):**
+
+- Each tick: calculate remaining `slot_time` from `end_time`
+- Fire `tick` events to all consumers
+- When second changes: fire `second` events to all consumers
+- When `now >= end_time`: call `state.next()` to advance
+
+**Section Progression:**
+
+- `state.next()` tries `next_section()` → `next_group()` → `next_round()` in order
+- Each returns `True` if successful, `False` if iterator exhausted
+- Announcement sections wait for audio generation and playback before advancing
+
+**Control Commands:**
+
+- `pause()`: toggles between paused/running, resumes time on unpause
+- `skip_fwd(seconds)`: reduces `slot_time`, recalculates `end_time`
+- `skip_back(seconds)`: increases `slot_time` up to section length
+- `skip_previous()`: resets to full section time
+- `skip_next()`: forces immediate advancement to next section/group/round
+- `goto(round, group)`: manually positions iterators without firing all events
+- `stop()`: stops timing, resets state
+- `reset()`: full reset to uninitialized state
+- `quit()`: sets `running = False`, exits main loop
+
+**Special Sections:**
+
+- `AnnounceSection`: generates and plays speech before each group
+- `ShowTimeSection`: displays actual time when no competition running
+- Standard sections: Prep, NoFly, Work, Land, Gap (task-dependent)
+
+**Event Propagation:**
+Each state change fires events to registered consumers:
+
+- `{Consumer}.newRound` - new round started
+- `{Consumer}.newGroup` - new group started
+- `{Consumer}.newSection` - new timing section started
+- `{Consumer}.tick` - every update loop iteration
+- `{Consumer}.second` - every second of timing
