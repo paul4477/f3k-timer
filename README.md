@@ -8,9 +8,9 @@ Plugins for serial comms (Pandora base station) and ESPNow (custom esp32 based t
 > git clone -b develop https://github.com/paul4477/f3k-timer.git
 
 > cd f3k-timer
-> ./setup.py
+> ./setup.sh
 
-venv-f3k-timer/bin/python f3k-timer.py
+venv-f3k-timer/bin/python f3k_timer.py
 
  -- Then simply access http://<ip_of_machine> to control event loading, running
 
