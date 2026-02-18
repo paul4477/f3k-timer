@@ -7,6 +7,11 @@ F3K Timer is an event-driven, plugin-based timing system for F3K model aircraft 
 ## Architecture Diagram
 
 ```mermaid
+---
+config:
+  look: handDrawn
+  theme: neutral
+---
 graph TB
     subgraph "Main Application"
         FT[f3k_timer.py<br/>Main Entry Point]
