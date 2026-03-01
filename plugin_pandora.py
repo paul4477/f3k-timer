@@ -32,7 +32,7 @@ class Pandora(PluginBase):
             self.logger.exception(f"Couldn't open serial port {self.device}")
 
     async def onSecond(self, state):
-        if self.port:
+        if self.port and state.round and state.group and state.section:
             r = state.round.round_number
             g = state.group.group_number
             s = state.section.get_serial_code()
