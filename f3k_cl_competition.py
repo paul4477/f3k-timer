@@ -294,7 +294,7 @@ class Group:
     def populate_sections(self):
         prep_time = self.event_config.get('prep_time', 300)
         no_fly_time = self.event_config.get('no_fly_time', 60)
-        if self.event_config['use_strict_test_time']:
+        if self.event_config.get('use_strict_test_time', False):
             test_time = 45
         else:   
             test_time = 0
@@ -333,11 +333,11 @@ class AllUpGroup(Group):
                 self.all_up_flight_count = 5
             case _:
                 self.logger.error(f"Unexpected round short_code in All Up group: {round_obj.short_code}")
-        super().__init__(group_number, group_letter, round_obj, pilot_list, event_config=None)
+        super().__init__(group_number, group_letter, round_obj, pilot_list, event_config=event_config)
 
     def populate_sections(self):
         prep_time = self.event_config.get('prep_time', 300)
-        if self.event_config['use_strict_test_time']:
+        if self.event_config.get('use_strict_test_time', False):
             test_time = 45
         else:   
             test_time = 0

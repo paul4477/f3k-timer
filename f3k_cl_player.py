@@ -202,11 +202,11 @@ class Player:
         self.event_config = event_config
         self.logger.info(f"Player configuration: {self.event_config}")
 
-        if not 'prep_time' in self.event_config: self.event_config['prep_time'] = 300
-        if not 'use_strict_test_time' in self.event_config: self.event_config['use_strict_test_time'] = False
-        if not 'no_fly_time' in self.event_config: self.event_config['no_fly_time'] = 60
-        if not 'land_time' in self.event_config: self.event_config['land_time'] = 30
-        if not 'group_separation_time' in self.event_config: self.event_config['group_separation_time'] = 120
+        self.event_config.setdefault('prep_time', 300)
+        self.event_config.setdefault('use_strict_test_time', False)
+        self.event_config.setdefault('no_fly_time', 60)
+        self.event_config.setdefault('land_time', 30)
+        self.event_config.setdefault('group_separation_time', 120)
         self.logger.info(f"Player configuration after defaults: {self.event_config}")
 
     def register_handlers(self):
