@@ -139,6 +139,7 @@ class NoFlySection(Section):
     def populate_audio_times(self):
 
         try:
+            self.say_seconds.remove(18)
             self.say_seconds.remove(19)
             self.say_seconds.remove(20)
             self.say_seconds.remove(30)
