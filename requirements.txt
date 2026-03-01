@@ -1,11 +1,12 @@
 aiohappyeyeballs==2.6.1
 aiohttp==3.12.15
+aiohttp-sse==2.2.0
 aiosignal==1.4.0
 attrs==25.3.0
 certifi==2025.8.3
 charset-normalizer==3.4.3
 coloredlogs==15.0.1
-flatbuffers==20181003210633
+flatbuffers==25.9.23
 frozenlist==1.7.0
 humanfriendly==10.0
 idna==3.10
@@ -19,9 +20,12 @@ propcache==0.3.2
 protobuf==6.32.1
 pygame==2.6.1
 pyserial==3.5
+PyYAML==6.0.3
 requests==2.32.5
 scapy==2.5.0
 sympy==1.14.0
 typing_extensions==4.15.0
 urllib3==2.5.0
 yarl==1.20.1
+aiohttp-jinja2==1.6
+Jinja2==3.1.6

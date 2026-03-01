@@ -33,6 +33,12 @@ then
   echo
   $BIN_DIR/pip install -r requirements_tone_gen.txt
 fi
+if [ -d $venv_name/bin ];
+then
+  BIN_DIR=$venv_name/bin
+else
+  BIN_DIR=$venv_name/Scripts
+fi
 $BIN_DIR/python generate_tones.py "$@"
 
 echo

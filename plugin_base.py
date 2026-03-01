@@ -2,19 +2,20 @@ import logging
 import time
 
 class PluginBase():
-    def __init__(self, events):
+    def __init__(self, events, config):
         self.logger = logging.getLogger(self.__class__.__name__)
         self.events = events
         self.register_handlers()
         self.rate_limit = 1
         self._enabled = True
+        self.config = config
     
     def register_handlers(self):
         self.events.on(f"{self.__class__.__name__}.tick")(self.onTick)
         self.events.on(f"{self.__class__.__name__}.second")(self.onSecond)
         self.events.on(f"{self.__class__.__name__}.newSection")(self.onNewSection)
-        self.events.on(f"{self.__class__.__name__}.newGroup")(self.onNewGroup)        
-        self.events.on(f"{self.__class__.__name__}.newRound")(self.onNewRound)        
+        self.events.on(f"{self.__class__.__name__}.newGroup")(self.onNewGroup)
+        self.events.on(f"{self.__class__.__name__}.newRound")(self.onNewRound)
 
     def is_enabled(self):
         return self._enabled
@@ -49,5 +50,5 @@ class PluginBase():
     async def onNewRound(self, state):
         #if self.enabled():
         pass               
-
+   
 
