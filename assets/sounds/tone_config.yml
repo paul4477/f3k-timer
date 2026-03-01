@@ -151,6 +151,8 @@ tones:
 ---
 name: 0_3s.wav
 tones:
+  - silence:
+      duration: 1000
   - tone:
       pitch: 732 #hz
       duration: 3000 #ms
@@ -158,6 +160,8 @@ tones:
 ---
 name: 0_normal.wav
 tones:
+  - silence:
+      duration: 1000
   - tone:
       pitch: 732 #hz
       duration: 1000 #ms
@@ -165,6 +169,8 @@ tones:
 ---
 name: 0_short_down.wav
 tones:
+  - silence:
+      duration: 1000
   - tone:
       pitch: 442 #hz
       duration: 500 #ms

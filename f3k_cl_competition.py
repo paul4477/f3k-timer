@@ -4,6 +4,8 @@ from task_data import f3k_task_timing_data
 
 SHORT_TIME_DEBUG = False
 
+BEEPS_START_AT = 1
+
 class Section:
     """
     Represents a section with the running of a group - prep time, test time, no-fly, working, landing etc
@@ -18,14 +20,17 @@ class Section:
         self.section_index = section_index
         self.sectionTime = seconds_length
         # List of times that will trigger audio calls
-        # Default is every 30 seconds + 20 down to 5.
+        # Default is every 30 seconds + 20 down to BEEPS_START_AT.
         # Excluding the first second which will usually be covered by the pre-section
         # announcement or the start of section announcement
-        self.say_seconds = list((x for x in range(seconds_length-1, 0 ,-1) if x%30==0)) + list(range(20,0,-1))
+        # If we want no beeps (other than the start signal) then set BEEPS_START_AT to 1 and use a the 0_*.wav files which have a
+        # 1s silence at the start (since we can't use time 0)
+        if BEEPS_START_AT == 1: self.say_seconds = list((x for x in range(seconds_length-1, 0 ,-1) if x%30==0)) + list(range(20,0,-1))
+        else: self.say_seconds = list((x for x in range(seconds_length-1, 0 ,-1) if x%30==0)) + list(range(20, BEEPS_START_AT, -1))
         # Dict of timestamps for audio callouts
         # All these must be integer second values
         self.audio_times = {}
-        self.audio_times[0] = audio_library.effect_countdown_beeps
+        self.audio_times[BEEPS_START_AT] = audio_library.effect_countdown_beeps
         self.populate_audio_times()
         self.pre_announce_times = {}
         self.populate_pre_announce_times()
@@ -87,9 +92,9 @@ class PrepSection(Section):
             self.say_seconds.remove(60)
             
             if isinstance(self.get_next_section(), TestSection):
-                self.audio_times[0] = audio_library.effect_countdown_beeps
+                self.audio_times[BEEPS_START_AT] = audio_library.effect_countdown_beeps
             else:
-                self.audio_times[0] = audio_library.effect_countdown_beeps_end
+                self.audio_times[BEEPS_START_AT] = audio_library.effect_countdown_beeps_end
 
             self.say_seconds.remove(self.sectionTime - 120)       # For announcement (below)
         except ValueError:
@@ -121,7 +126,7 @@ class TestSection(Section):
             self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
         except ValueError:
             pass
-        self.audio_times[0] = audio_library.effect_countdown_beeps_end
+        self.audio_times[BEEPS_START_AT] = audio_library.effect_countdown_beeps_end
         self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_test_time']
       
     def populate_pre_announce_times(self):
@@ -159,13 +164,13 @@ class NoFlySection(Section):
         if isinstance(self.group, AllUpGroup):
             ## Ending countdown is actually the start of the round
             ## so we need to use the 3s version for AllUp.
-            self.audio_times[0] = audio_library.effect_countdown_beeps_3s   
+            self.audio_times[BEEPS_START_AT] = audio_library.effect_countdown_beeps_3s   
 
 class AllUpNoFlySection(NoFlySection):
     ## Used between the working times
     def populate_pre_announce_times(self):
         ## Alter beep f
-        self.audio_times[0] = audio_library.effect_countdown_beeps_3s   
+        self.audio_times[BEEPS_START_AT] = audio_library.effect_countdown_beeps_3s   
         ## Previous section will be landing window
         ## Adjust announcements accordingly
         #self.pre_announce_times.pop(-60)
@@ -234,7 +239,7 @@ class LandingSection(Section):
         #self.say_seconds.remove(30)
         #self.say_seconds.remove(60)
 
-        self.audio_times[0] = audio_library.effect_countdown_beeps_end
+        self.audio_times[BEEPS_START_AT] = audio_library.effect_countdown_beeps_end
         self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_30s_landing_window']  
         
 
