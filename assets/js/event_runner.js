@@ -73,6 +73,7 @@ async function handleSetConfigButton() {
   const prep_time = document.getElementById('prep_time').value;
   const group_separation_time = document.getElementById('group_separation_time').value;
   const use_strict_test_time = document.getElementById('use_strict_test_time').checked;
+  const competition_start_time = document.getElementById('competition_start_time').value;
 
   try {
     const response = await fetch('/set_event_config', {
@@ -81,7 +82,8 @@ async function handleSetConfigButton() {
       body: JSON.stringify({
         prep_time: parseInt(prep_time),
         group_separation_time: parseInt(group_separation_time),
-        use_strict_test_time: use_strict_test_time
+        use_strict_test_time: use_strict_test_time,
+        competition_start_time: parseInt(competition_start_time)
       })
     });
     if (!response.ok) {
@@ -164,7 +166,10 @@ document.getElementById('reset').addEventListener('click', handleControlButton);
 
 // Add this to your onBodyLoad() function or wherever you set up event listeners
 document.getElementById('goto').addEventListener('click', handleGoToButton);
-  document.getElementById('set_event_config').addEventListener('click', handleSetConfigButton);
+  document.getElementById('prep_time').addEventListener('change', handleSetConfigButton);
+  document.getElementById('group_separation_time').addEventListener('change', handleSetConfigButton);
+  document.getElementById('competition_start_time').addEventListener('change', handleSetConfigButton);
+  document.getElementById('use_strict_test_time').addEventListener('change', handleSetConfigButton);
 }
 
 

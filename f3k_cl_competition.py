@@ -29,7 +29,9 @@ class Section:
         self.populate_audio_times()
         self.pre_announce_times = {}
         self.populate_pre_announce_times()
-        
+        self.announce_sound = None
+        self.announce_sound_generating = False
+
         #self.audio_times[self.sectionTime - 2] = audio_library.effect_countdown_beeps_end
 
     def __repr__(self):
@@ -39,7 +41,7 @@ class Section:
     def get_flight_number(self):
         try: 
             return list((x for x in self.group.sections if isinstance(x, self.__class__))).index(self) + 1
-        except ValueError:
+        except (ValueError, AttributeError):
             return 1
     def get_next_section(self):
         try: return self.group.sections[self.section_index+1]
