@@ -69,6 +69,29 @@ eventSource.addEventListener("time", (event) => {
   }
 });
 
+async function handleSetConfigButton() {
+  const prep_time = document.getElementById('prep_time').value;
+  const group_separation_time = document.getElementById('group_separation_time').value;
+  const use_strict_test_time = document.getElementById('use_strict_test_time').checked;
+
+  try {
+    const response = await fetch('/set_event_config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prep_time: parseInt(prep_time),
+        group_separation_time: parseInt(group_separation_time),
+        use_strict_test_time: use_strict_test_time
+      })
+    });
+    if (!response.ok) {
+      console.error(`Error: ${response.status} ${response.statusText}`);
+    }
+  } catch (err) {
+    console.error(`Error sending config: ${err}`);
+  }
+}
+
 async function handleGoToButton() {
   const roundValue = document.getElementById('roundSelect').value;
   const groupValue = document.getElementById('groupSelect').value;
@@ -141,11 +164,9 @@ document.getElementById('reset').addEventListener('click', handleControlButton);
 
 // Add this to your onBodyLoad() function or wherever you set up event listeners
 document.getElementById('goto').addEventListener('click', handleGoToButton);
-  
-  
-
-
+  document.getElementById('set_event_config').addEventListener('click', handleSetConfigButton);
 }
+
 
 
 

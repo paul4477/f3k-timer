@@ -48,6 +48,7 @@ class WebFrontend(PluginBase):
                 #web.get("/reset", self.handle_reset),
                 web.post("/timesync/", self.handle_timesync),
                 web.post("/load_event", self.handle_load_event),
+                web.post("/set_event_config", self.handle_set_event_config),
 
                 web.get("/groupData", self.handle_groupData),
                 web.get("/roundData", self.handle_roundData),
@@ -122,9 +123,13 @@ class WebFrontend(PluginBase):
                groups_options += f'<option value="{group}">{chr(64+group)}</option>'
             self.logger.debug(f"Round options HTML: {rounds_options}")
             self.logger.debug(f"Group options HTML: {groups_options}")
+            event_config = self.player.event_config or {}
             context = {
                 'rounds': rounds_options,
-                'groups': groups_options
+                'groups': groups_options,
+                'prep_time': event_config.get('prep_time', 300),
+                'group_separation_time': event_config.get('group_separation_time', 120),
+                'use_strict_test_time': event_config.get('use_strict_test_time', False),
             }
             response = aiohttp_jinja2.render_template(template_path, request,
                                           context=context)
@@ -178,6 +183,12 @@ class WebFrontend(PluginBase):
         else:
             #return web.Response(status=200, text=f"Event load requested")
             raise web.HTTPFound('/')
+
+    async def handle_set_event_config(self, request):
+        data = await request.json()
+        self.logger.info(f"Handling set_event_config: {data}")
+        self.events.trigger("player.set_event_config", data)
+        return web.Response(status=200, text="Done")
 
     async def handle_goto(self, request):
         self.events.trigger(f"player.goto", int(request.match_info['round']), int(request.match_info['group']))
