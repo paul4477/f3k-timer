@@ -81,20 +81,31 @@ class PrepSection(Section):
         return "PT"
     def get_description(self):
         return "Preparation Time"
+
+
     def populate_audio_times(self):
         try:
             self.say_seconds.remove(19)
+            self.say_seconds.remove(18)
+            self.say_seconds.remove(17)
+            self.say_seconds.remove(16)
+            self.say_seconds.remove(14)
+            self.say_seconds.remove(13)
+            self.say_seconds.remove(12)
+            self.say_seconds.remove(11)
+
             self.say_seconds.remove(20)
             self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
             self.say_seconds.remove(60)
-            
-            if isinstance(self.get_next_section(), TestSection):
-                self.audio_times[2] = audio_library.effect_countdown_beeps
-            else:
-                self.audio_times[2] = audio_library.effect_countdown_beeps_end
-
-            self.say_seconds.remove(self.sectionTime - 120)       # For announcement (below)
         except ValueError:
+            pass
+        if isinstance(self.get_next_section(), TestSection):
+            self.audio_times[2] = audio_library.effect_countdown_beeps
+        else:
+            self.audio_times[2] = audio_library.effect_countdown_beeps_end
+        try:
+            self.say_seconds.remove(self.sectionTime - 120)       # For announcement (below)
+        except ValueError:            
             pass
         
         self.audio_times[self.sectionTime - 1] = audio_library.language_audio['vx_prep_start']
