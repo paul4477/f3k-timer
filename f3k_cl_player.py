@@ -410,6 +410,7 @@ class Player:
                 if self.state.section.announce_sound is None and not self.state.section.announce_sound_generating:
                     competition_start = self.event_config.get('competition_start_time', 600)
                     mins_until_start = competition_start - current_minute_of_day
+                    self.logger.debug(f"Competition start time: {competition_start} minutes from midnight. Current time: {current_minute_of_day} minutes from midnight. Minutes until start: {mins_until_start}")
                     if mins_until_start > 0:
                         if mins_until_start == 1:
                             announcement = "1 minute before competition begins."
