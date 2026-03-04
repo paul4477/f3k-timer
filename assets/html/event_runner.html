@@ -162,6 +162,53 @@
 </div>
 
       <div class="row p-1 mx-auto">
+        <a class="btn btn-warning" data-bs-toggle="collapse" href="#timingSettings" role="button" aria-expanded="false"
+          aria-controls="timingSettings">
+          <svg xmlns="http://www.w3.org/2000/svg" height="6vw" fill="currentColor" class="bi bi-caret-down-square-fill"
+            viewBox="0 0 16 16">
+            <path
+              d="M0 2a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm4 4a.5.5 0 0 0-.374.832l4 4.5a.5.5 0 0 0 .748 0l4-4.5A.5.5 0 0 0 12 6z" />
+          </svg>
+          Show/Hide Timing Settings
+        </a>
+      </div>
+      <div class="collapse" id="timingSettings">
+        <div class="row p-3 mx-auto">
+          <div class="col">
+            <div class="mb-2">
+              <label class="form-label" for="prep_time">Prep Time:</label>
+              <select class="form-select" id="prep_time">
+                {% for m in range(1, 11) %}
+                <option value="{{ m * 60 }}" {{ 'selected' if prep_time == m * 60 else '' }}>{{ m }} min</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label" for="group_separation_time">Group Separation Time:</label>
+              <select class="form-select" id="group_separation_time">
+                {% for m in range(1, 11) %}
+                <option value="{{ m * 60 }}" {{ 'selected' if group_separation_time == m * 60 else '' }}>{{ m }} min</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-2 form-check">
+              <input type="checkbox" class="form-check-input" id="use_strict_test_time" {{ 'checked' if use_strict_test_time else '' }}>
+              <label class="form-check-label" for="use_strict_test_time">Use Strict Test Time</label>
+            </div>
+            <small class="text-muted">Changes apply to future groups. Already-started groups are not affected.</small>
+          </div>
+          <div class="col-3 align-self-center">
+            <button id="set_event_config" type="button" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" height="8vw" fill="currentColor"
+                class="bi bi-check-circle-fill" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0m-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row p-1 mx-auto">
         <a class="btn btn-warning" data-bs-toggle="collapse" href="#extraControls" role="button" aria-expanded="false"
           aria-controls="collapseExample">
           <svg xmlns="http://www.w3.org/2000/svg" height="6vw" fill="currentColor" class="bi bi-caret-down-square-fill"

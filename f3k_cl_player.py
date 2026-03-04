@@ -222,6 +222,7 @@ class Player:
         self.events.on("player.stop")(self.stop)
         self.events.on("player.quit")(self.quit)
         self.events.on("player.reset")(self.reset)
+        self.events.on("player.set_event_config")(self.update_event_config)
         
     async def load_data(self, raw_json):
         self.event_id = raw_json['event']['event_id']
@@ -284,6 +285,16 @@ class Player:
         #await self.stop()
         self.logger.info(f"Going to round {round}, group {group}")
         self.state.goto(round, group)
+
+    async def update_event_config(self, config_updates: dict):
+        allowed = {'prep_time', 'group_separation_time', 'use_strict_test_time'}
+        for key in allowed:
+            if key in config_updates:
+                if key == 'use_strict_test_time':
+                    self.event_config[key] = bool(config_updates[key])
+                else:
+                    self.event_config[key] = int(config_updates[key])
+        self.logger.info(f"Event config updated: {self.event_config}")
 
     async def quit(self):
         self.running = False
