@@ -1,8 +1,9 @@
 ---
 name: main
-prep_time: 60
+prep_time: 300
 use_strict_test_time: False
-group_separation_time: 5
+group_separation_time: 120
+competition_start_time: 600 # Time in minutes from midnight. 600 = 10:00am
 voice: en_US-lessac-medium
 ---
 name: web

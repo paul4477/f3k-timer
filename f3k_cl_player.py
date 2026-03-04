@@ -207,6 +207,7 @@ class Player:
         self.event_config.setdefault('no_fly_time', 60)
         self.event_config.setdefault('land_time', 30)
         self.event_config.setdefault('group_separation_time', 120)
+        self.event_config.setdefault('competition_start_time', 600)  # 10:00 AM in minutes from midnight
         self.logger.info(f"Player configuration after defaults: {self.event_config}")
 
     def register_handlers(self):
@@ -287,7 +288,7 @@ class Player:
         self.state.goto(round, group)
 
     async def update_event_config(self, config_updates: dict):
-        allowed = {'prep_time', 'group_separation_time', 'use_strict_test_time'}
+        allowed = {'prep_time', 'group_separation_time', 'use_strict_test_time', 'competition_start_time'}
         for key in allowed:
             if key in config_updates:
                 if key == 'use_strict_test_time':
@@ -399,6 +400,47 @@ class Player:
                             self.running = True # keep program alive
                             self.started = False                
         elif isinstance(self.state.section, f3k_cl_competition.ShowTimeSection):
+            now_local = time.localtime(time.time())
+            current_minute_of_day = now_local.tm_hour * 60 + now_local.tm_min
+            last_announced = getattr(self.state.section, 'last_announced_minute', -1)
+
+            # Only generate an announcement at 5-minute boundaries (e.g. :00, :05, :10...)
+            # and only once per interval
+            if (current_minute_of_day % 5 == 0) and (last_announced != current_minute_of_day):
+                if self.state.section.announce_sound is None and not self.state.section.announce_sound_generating:
+                    competition_start = self.event_config.get('competition_start_time', 600)
+                    mins_until_start = competition_start - current_minute_of_day
+                    if mins_until_start > 0:
+                        if mins_until_start == 1:
+                            announcement = "1 minute before competition begins."
+                        else:
+                            announcement = f"{mins_until_start} minutes before competition begins."
+                    elif mins_until_start == 0:
+                        if self.rounds:
+                            await self.start()
+                            return
+                        else:
+                            announcement = "Competition could not start as data is not loaded."
+                    else:
+                        announcement = f"Competition start time is set in the past. It was {abs(mins_until_start)} minutes ago based on current system time. Please check your configuration."
+                        
+                    self.state.section.announce_sound_generating = True
+                    # Sets section.announce_sound to generated wav
+                    self.events.trigger("rtvoice.generate_and_store_sound", announcement, self.state.section, paragraph_silence=1)
+
+            if self.state.section.announce_sound is not None:
+                # Create sound object and trigger playing it
+                self.events.trigger("audioplayer.play_audio", self.state.section.announce_sound)
+
+                ## Wait for announcement to complete (halt outer loop)
+                await asyncio.sleep(2) # sleep to ensure mixer started
+
+                while pygame.mixer.get_busy():
+                    await asyncio.sleep(0.5)
+                self.state.section.announce_sound = None
+                self.state.section.announce_sound_generating = False
+                self.state.section.last_announced_minute = current_minute_of_day
+
             await asyncio.sleep(1)
             for consumer in self.eventConsumers:
                 self.events.trigger(f"{consumer.__class__.__name__}.second", self.state)
