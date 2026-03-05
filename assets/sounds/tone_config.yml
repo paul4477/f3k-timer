@@ -104,11 +104,11 @@ name: 21_3s.wav
 tones:
   - tone: &short_tone
       pitch: 550 #hz
-      duration: 250 #ms
+      duration: 500 #ms
       type: sqsaw # saw, square or sqsaw
       pitch_offset: 5 # hz only applicable for sqsaw type
   - silence: &inverse_silence
-      duration: 750 # If each section is exactly 1second then this must be (1000 - tone duration)
+      duration: 500 # If each section is exactly 1second then this must be (1000 - tone duration)
   - tone: *short_tone
   - silence: *inverse_silence    
   - tone:
@@ -120,11 +120,11 @@ name: 21_normal.wav
 tones:
   - tone: &short_tone
       pitch: 550 #hz
-      duration: 250 #ms
+      duration: 500 #ms
       type: sqsaw # saw, square or sqsaw
       pitch_offset: 5 # hz only applicable for sqsaw type
   - silence: &inverse_silence
-      duration: 750 # If each section is exactly 1second then this must be (1000 - tone duration)
+      duration: 500 # If each section is exactly 1second then this must be (1000 - tone duration)
   - tone: *short_tone
   - silence: *inverse_silence    
   - tone:
@@ -136,11 +136,11 @@ name: 21_short_down.wav
 tones:
   - tone: &short_tone
       pitch: 500 #hz
-      duration: 150 #ms
+      duration: 75 #ms
       type: sqsaw # saw, square or sqsaw
       pitch_offset: 5 # hz only applicable for sqsaw type
   - silence: &inverse_silence
-      duration: 850 # If each section is exactly 1second then this must be (1000 - tone duration)
+      duration: 925 # If each section is exactly 1second then this must be (1000 - tone duration)
   - tone: *short_tone
   - silence: *inverse_silence
   - tone:

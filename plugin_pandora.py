@@ -32,22 +32,23 @@ class Pandora(PluginBase):
             self.logger.exception(f"Couldn't open serial port {self.device}")
 
     async def onSecond(self, state):
-        if self.port and state.round and state.group and state.section:
-            r = state.round.round_number
-            g = state.group.group_number
-            s = state.section.get_serial_code()
-            d = state.round.short_name
-            au_f = state.section.get_flight_number() or '1'
-            # P|01|02|1
-            output = f"P|{r:02}"\
-                    f"|{g:02}"\
+        if self.port:
+            r_num = state.round.round_number if state.round else 0
+            g_num = state.group.group_number if state.group else 0
+            serial_code = state.section.get_serial_code() if state.section else "ST"
+            short_name = state.round.short_name if state.round else "f3k_a"
+            au_f = state.section.get_flight_number() or "1"
+            
+            output = f"P|{r_num:02}"\
+                    f"|{g_num:02}"\
                       f"|{au_f}"\
-                      f"|{d}\r\n" \
-                      f"R{r:02}" \
-                      f"G{g:02}" \
+                      f"|{short_name}\r\n" \
+                      f"R{r_num:02}" \
+                      f"G{g_num:02}" \
                       f"T{state.time_digits}" \
-                      f"{s}\r".encode('ascii')
-            try: self.write(output)
+                      f"{serial_code}\r".encode('ascii')
+            try:
+                self.write(output)
+                self.logger.debug(f"Sent to serial: {repr(output)}")
             except Exception as e:
-                self.logger.error(f"Write failed to device {self.device}")
-
+                self.logger.error(f"Write failed to device {self.device} with error: {e}")

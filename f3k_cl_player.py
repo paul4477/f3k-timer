@@ -416,6 +416,8 @@ class Player:
                             announcement = "1 minute before competition begins."
                         else:
                             announcement = f"{mins_until_start} minutes before competition begins."
+                        if not self.rounds:
+                            announcement += " Competition data is not loaded."
                     elif mins_until_start == 0:
                         if self.rounds:
                             await self.start()

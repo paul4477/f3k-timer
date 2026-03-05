@@ -26,9 +26,7 @@ class Section:
         # All these must be integer second values
         self.audio_times = {}
         self.audio_times[2] = audio_library.effect_countdown_beeps
-        self.populate_audio_times()
         self.pre_announce_times = {}
-        self.populate_pre_announce_times()
         self.announce_sound = None
         self.announce_sound_generating = False
 
@@ -332,6 +330,11 @@ class Group:
         if group_separation_time > 0:
             self.sections.append(GapSection(group_separation_time, self, self.round, len(self.sections), self.event_config))
         self.logger.debug(f"{self.sections}")
+        
+        for section in self.sections:
+            section.populate_audio_times()
+            section.populate_pre_announce_times()
+
     def __repr__(self):
         return f"Group {self.group_letter} of Round {self.round.round_number:2d}"
 
@@ -376,6 +379,10 @@ class AllUpGroup(Group):
                 self.sections.append(LandingSection(land_time, self, self.round, len(self.sections), self.event_config))
         if group_separation_time > 0:
             self.sections.append(GapSection(group_separation_time, self, self.round, len(self.sections), self.event_config))
+
+        for section in self.sections:
+            section.populate_audio_times()
+            section.populate_pre_announce_times()
 
 # Example usage:
 # round_obj = Round('f3k_a', 'A', 1)
