@@ -34,11 +34,23 @@ class State:
         self.group = None
         self.section = None
         self.section_length = 0
-        self.time_str = "--:--"
-        self.time_digits = "0000"
 
     def __repr__(self):
         return f"State(round={self.round}, group={self.group}, section={self.section}, slot_time={self.slot_time}, end_time={self.end_time}, no-fly={self.is_no_fly()})"
+
+    @property
+    def time_str(self):
+        """Timer display string (MM:SS); delegates to the current section."""
+        if self.section is None:
+            return "--:--"
+        return self.section.get_time_str(self.slot_time)
+
+    @property
+    def time_digits(self):
+        """Timer display digits (MMSS); delegates to the current section."""
+        if self.section is None:
+            return "0000"
+        return self.section.get_time_digits(self.slot_time)
 
     def start(self):
         self.iter_round = iter(self.player.rounds)
@@ -152,7 +164,7 @@ class State:
             return {
                     'slot_time': self.slot_time, 
                     'no_fly': self.is_no_fly(),
-                    'time_s': self.time_str if (self.slot_time or self.slot_time == 0) else '--:--',
+                    'time_s': self.time_str,
                     'r_num': self.round.round_number if self.round else '-',
                     'g_let': self.group.group_letter if self.group else '-',
                     'f_num': self.section.get_flight_number() if self.section else '1',
@@ -319,10 +331,9 @@ class Player:
         
         if isinstance(self.state.section, f3k_cl_competition.AnnounceSection):
             self.logger.debug(f"In Announce loop {self.state.time_str} {self.state.end_time} {self.state.time_digits} {self.state.group.announce_sound}")
-            ## While our annnouncement is not generated, loop - keeping the time the same?
-            self.state.time_str = "--:--"
-            self.state.time_digits = "0000"
-            
+            ## While our announcement is not generated, loop.
+            ## Display is blanked by AnnounceSection.get_time_str / get_time_digits.
+
             # Audio is not ready, so update consumers and return to outer loop
             for consumer in self.eventConsumers:
                 self.events.trigger(f"{consumer.__class__.__name__}.tick", self.state)
@@ -367,10 +378,9 @@ class Player:
         now = time.time()
         # Fire generic events for consumers to deal with.
         if self.started and self.state.end_time: 
-            # Calculate timings every time around the loop
+            # Calculate slot_time every time around the loop;
+            # time_str and time_digits are derived via the Section properties.
             self.state.slot_time = math.ceil(max(0, self.state.end_time - now) if self.state.end_time else 0)
-            self.state.time_str = f"{int(self.state.slot_time/60):02d}:{self.state.slot_time%60:02d}"
-            self.state.time_digits = f"{int(self.state.slot_time/60):02d}{self.state.slot_time%60:02d}"
             
             # Any consumers who want the more frequent updates can get them here.
             # We fire them all but the listeners may be null if they don't care.

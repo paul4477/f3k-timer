@@ -1,4 +1,5 @@
 import logging
+import time
 import audio_library
 from task_data import f3k_task_timing_data
 
@@ -63,7 +64,18 @@ class Section:
     def get_serial_code(self):
         return "ST"
     def get_description(self):
-        return "Base class, shouldn't see this one."  
+        return "Base class, shouldn't see this one."
+
+    def get_time_str(self, slot_time):
+        """Return the timer display string for this section (MM:SS).
+        Override in subclasses to change what the display shows."""
+        return f"{int(slot_time / 60):02d}:{slot_time % 60:02d}"
+
+    def get_time_digits(self, slot_time):
+        """Return the timer display digits for this section (MMSS, no colon).
+        Override in subclasses to change what scoreboards receive."""
+        return f"{int(slot_time / 60):02d}{slot_time % 60:02d}"
+
     def set_audio_time(self, t, sound):
         try: self.say_seconds.remove(t)
         except ValueError: pass
@@ -260,6 +272,15 @@ class GapSection(Section):
 class AnnounceSection(Section):
     def get_description(self):
         return "Announcement in progress"
+
+    def get_time_str(self, slot_time):
+        """Blank the display while the announcement audio is playing."""
+        return "--:--"
+
+    def get_time_digits(self, slot_time):
+        """Blank the scoreboard while the announcement audio is playing."""
+        return "0000"
+
     def populate_audio_times(self):
         self.say_seconds = []
         # Reset to clear other values
@@ -272,6 +293,15 @@ class ShowTimeSection(GapSection):
         return "DT"
     def get_description(self):
         return "Actual Time HH:MM"
+
+    def get_time_str(self, slot_time):
+        """Display the live wall-clock time (HH:MM) during pre-competition idle."""
+        return time.strftime("%H:%M", time.localtime())
+
+    def get_time_digits(self, slot_time):
+        """Send the live wall-clock time (HHMM) to scoreboards during pre-competition idle."""
+        return time.strftime("%H%M", time.localtime())
+
     def populate_audio_times(self):
         ## COuld we add the logic here for "Starting in X minutes annoucements?"
         
