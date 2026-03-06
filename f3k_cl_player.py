@@ -4,6 +4,7 @@ import time
 import math
 import asyncio 
 import pygame
+import audio_library
 import f3k_cl_competition
 
 class Pilot:
@@ -430,6 +431,8 @@ class Player:
                             announcement += " Competition data is not loaded."
                     elif mins_until_start == 0:
                         if self.rounds:
+                            # Play start signal and then start the event immediately after the sound is done.
+                            self.events.trigger("audioplayer.play_audio", audio_library.effect_start_signal)
                             await self.start()
                             return
                         else:
