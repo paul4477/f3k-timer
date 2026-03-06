@@ -424,11 +424,11 @@ class Player:
                     self.logger.debug(f"Competition start time: {competition_start} minutes from midnight. Current time: {current_minute_of_day} minutes from midnight. Minutes until start: {mins_until_start}")
                     if mins_until_start > 0:
                         if mins_until_start == 1:
-                            announcement = "1 minute before competition begins."
+                            announcement = "1 minute before event begins."
                         else:
-                            announcement = f"{mins_until_start} minutes before competition begins."
+                            announcement = f"{mins_until_start} minutes before event begins."
                         if not self.rounds:
-                            announcement += " Competition data is not loaded."
+                            announcement += " Event data is not loaded."
                     elif mins_until_start == 0:
                         if self.rounds:
                             # Play start signal and then start the event immediately after the sound is done.
@@ -436,9 +436,9 @@ class Player:
                             await self.start()
                             return
                         else:
-                            announcement = "Competition could not start as data is not loaded."
+                            announcement = "Event could not start as data is not loaded."
                     else:
-                        announcement = f"Competition start time is set in the past. It was {abs(mins_until_start)} minutes ago based on current system time. Please check your configuration."
+                        announcement = f"Event start time is set in the past. It was {abs(mins_until_start)} minutes ago based on current system time. Please check your configuration."
                         
                     self.state.section.announce_sound_generating = True
                     # Sets section.announce_sound to generated wav
