@@ -290,7 +290,7 @@ class ShowTimeSection(GapSection):
     def __repr__(self):
         return f"Section {self.get_description()} "
     def get_serial_code(self):
-        return "DT"
+        return "PT" # DT doesn't work for current Pandora firmware
     def get_description(self):
         return "Actual Time HH:MM"
 

@@ -36,8 +36,8 @@ class Pandora(PluginBase):
             r_num = state.round.round_number if state.round else 0
             g_num = state.group.group_number if state.group else 0
             serial_code = state.section.get_serial_code() if state.section else "ST"
-            short_name = state.round.short_name if state.round else "f3k_a"
-            au_f = state.section.get_flight_number() or "1"
+            short_name = state.round.short_name if state.round else "- - N/A"
+            au_f = state.section.get_flight_number() or "0"
             
             output = f"P|{r_num:02}"\
                     f"|{g_num:02}"\
@@ -49,6 +49,5 @@ class Pandora(PluginBase):
                       f"{serial_code}\r".encode('ascii')
             try:
                 self.write(output)
-                self.logger.debug(f"Sent to serial: {repr(output)}")
             except Exception as e:
                 self.logger.error(f"Write failed to device {self.device} with error: {e}")
