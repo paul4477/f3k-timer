@@ -15,8 +15,14 @@ tones:
       pitch_offset: 220 # hz only applicable for sqsaw type
   - silence: *inverse_silence          
   - tone:
+      pitch: 550 #hz
+      duration: 120 #ms
+      type: sqsaw # saw, square or sqsaw
+      pitch_offset: 110 # hz only applicable for sqsaw type
+  - silence: *inverse_silence          
+  - tone:
       pitch: 880 #hz
-      duration: 2000 #ms
+      duration: 1000 #ms
       type: sqsaw # saw, square or sqsaw
       pitch_offset: -220 # hz only applicable for sqsaw type
 
