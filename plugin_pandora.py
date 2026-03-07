@@ -16,7 +16,7 @@ class Pandora(PluginBase):
     def write(self, bytes):
         self.port.write(bytes)
         self.port.flush()
-        self.logger.debug(f"Sent to serial: {repr(bytes)}")
+        self.logger.debug(f"Sent to serial {self.device}: {repr(bytes)}")
 
     def init_serial(self):
         try:

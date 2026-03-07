@@ -34,4 +34,12 @@ broadcast: True # If True then sends to all devices, if False then only to those
 #  peers: # List of MAC addresses of the scoreboard devices to send updates to
 #    - 24:0A:C4:00:00:01
 #    - 24:0A:C4:00:00:02
-
+---
+name: Older_Scoreboard
+module: plugin_serialjson
+object_name: SerialJson
+device: /dev/ttyUSB1
+baud: 19200
+bits: 8
+parity: N
+stop: 1

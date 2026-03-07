@@ -32,8 +32,9 @@ class ESPNow(PluginBase):
         # time - time state
         # p_def - pilot definition
         # g_def - group definition
-        self.logger.debug(json.dumps({'t': msg_type, 'd': data}).encode('ascii'))
-        self.write(json.dumps({'t': msg_type, 'd': data}).encode('ascii'))
+        message = json.dumps({'t': msg_type, 'd': data}, separators=(',', ':')).encode('ascii')
+        self.logger.debug(f"Sending message: {message}, length: {len(message)}")
+        self.write(message)
 
 
     def callback(self, from_mac, to_mac, msg):
