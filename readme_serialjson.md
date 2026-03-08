@@ -17,21 +17,13 @@ This document describes the serial protocol emitted by `plugin_serialjson.py` an
 
 ## Wire format
 
-Every message is framed identically:
+Every message is a single line of ASCII JSON terminated by a carriage-return (`\r`):
 
 ```
-[ 2 bytes: uint16 big-endian length ][ <length> bytes: ASCII JSON ]
+[ ASCII JSON ][ \r ]
 ```
 
-The length prefix counts only the JSON payload bytes, not itself.
-
-```c
-// Example framing structure
-struct Message {
-    uint16_t length;   // big-endian, MSB first
-    char     json[];   // ASCII, NOT null-terminated — add your own '\0'
-};
-```
+There is no length prefix. Read bytes until you receive `\r`, then parse the accumulated buffer as JSON.
 
 ---
 
@@ -41,8 +33,10 @@ struct Message {
 #include <Arduino.h>
 #include <ArduinoJson.h>   // https://arduinojson.org/ — v6 or v7
 
-#define SERIAL_BAUD 19200
+#define SERIAL_BAUD  19200
 #define JSON_BUF_SIZE 512
+
+char buf[JSON_BUF_SIZE];
 
 void setup() {
     Serial.begin(SERIAL_BAUD);
@@ -50,47 +44,21 @@ void setup() {
 }
 
 void loop() {
-    if (readMessage()) {
-        // message was parsed — handle in readMessage()
-    }
-}
+    // readBytesUntil blocks until '\r' received or buffer full.
+    // Returns the number of bytes placed in buf (the '\r' itself is NOT included).
+    int len = Serial.readBytesUntil('\r', buf, JSON_BUF_SIZE - 1);
+    if (len <= 0) return;
+    buf[len] = '\0';   // null-terminate for ArduinoJson
 
-bool readMessage() {
-    // ── 1. Wait for the 2-byte length prefix ──────────────────────────────
-    if (Serial.available() < 2) return false;
-
-    uint8_t hi = Serial.read();
-    uint8_t lo = Serial.read();
-    uint16_t msgLen = ((uint16_t)hi << 8) | lo;   // big-endian reassembly
-
-    if (msgLen == 0 || msgLen >= JSON_BUF_SIZE) {
-        // Corrupt frame — discard and resync
-        while (Serial.available()) Serial.read();
-        return false;
-    }
-
-    // ── 2. Read exactly msgLen bytes of JSON ──────────────────────────────
-    char buf[JSON_BUF_SIZE];
-    uint16_t received = 0;
-    unsigned long deadline = millis() + 500;   // 500 ms timeout
-
-    while (received < msgLen && millis() < deadline) {
-        if (Serial.available()) {
-            buf[received++] = Serial.read();
-        }
-    }
-    if (received < msgLen) return false;   // timeout
-    buf[received] = '\0';                  // null-terminate for ArduinoJson
-
-    // ── 3. Parse the envelope ─────────────────────────────────────────────
+    // ── Parse the envelope ────────────────────────────────────────────────
     StaticJsonDocument<JSON_BUF_SIZE> doc;
     DeserializationError err = deserializeJson(doc, buf);
-    if (err) return false;
+    if (err) return;
 
     const char* msgType = doc["t"];   // message type string
     JsonObject  data    = doc["d"];   // payload object
 
-    // ── 4. Dispatch by message type ───────────────────────────────────────
+    // ── Dispatch by message type ──────────────────────────────────────────
     if (strcmp(msgType, "time") == 0) {
         handleTime(data);
     } else if (strcmp(msgType, "p_def") == 0) {
@@ -98,8 +66,6 @@ bool readMessage() {
     } else if (strcmp(msgType, "p_list") == 0) {
         handlePilotList(doc["d"]);   // array, not object
     }
-
-    return true;
 }
 ```
 
@@ -178,6 +144,6 @@ void handlePilotList(JsonVariant d) {
 
 ## Notes
 
-- **Resync:** if the length prefix looks implausible (> buffer size, or you fall behind), flush `Serial` and wait for the next clean frame — the timer sends a new `time` message every second.
+- **Resync:** if `deserializeJson` returns an error, the frame was corrupt or you fell behind. Simply discard the buffer and call `readBytesUntil` again — the timer sends a new `time` message every second so recovery is automatic.
 - **`time_s` vs `slot_time`:** `slot_time` is always a plain integer (seconds remaining); `time_s` is the formatted string ready for display and already handles the special cases (`--:--` during announcements, wall clock during idle).
 - **No-fly indicator:** use `no_fly` to drive a red/green LED or buzzer lockout — it is `true` during prep, no-fly, landing, gap, and announcement sections, and `false` only during test and working sections.
