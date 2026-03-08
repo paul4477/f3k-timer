@@ -1,7 +1,5 @@
 # Serial JSON Protocol — Decoder Reference
 
-# This is no longer accurate
-
 This document describes the serial protocol emitted by `plugin_serialjson.py` and provides C code for decoding it on an Arduino platform.
 
 ---
