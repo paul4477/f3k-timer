@@ -19,8 +19,8 @@ class SerialJson(PluginBase):
     
     def write(self, bytes):
         try:
-            bytes = struct.pack('>H', len(bytes)) + bytes  # Prepend length of message as 2 bytes
-            self.port.write(bytes)
+            #bytes = struct.pack('>H', len(bytes)) + bytes  # Prepend length of message as 2 bytes
+            self.port.write(bytes + '\r'.encode('ascii'))
             self.port.flush()
             self.logger.debug(f"Sent to serial {self.device}: {repr(bytes)}")
         except Exception as e:
