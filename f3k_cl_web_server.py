@@ -236,8 +236,9 @@ class WebFrontend(PluginBase):
             self.events.trigger(f"audioplayer.play_audio", audio)
             await wait_for_audio()
             await asyncio.sleep(1)
-            
-        for audio in audio_library.task_audio.values():
+
+        import random
+        for audio in random.sample(list(audio_library.task_audio.values()), min(3, len(audio_library.task_audio))):
             self.events.trigger(f"audioplayer.play_audio", audio)
             await wait_for_audio()
             await asyncio.sleep(1)
