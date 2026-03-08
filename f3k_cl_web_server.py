@@ -1,4 +1,6 @@
 import asyncio
+from email.mime import audio
+from email.mime import audio
 import json
 import time
 import logging
@@ -7,6 +9,7 @@ from aiohttp import web, ClientConnectionError
 from aiohttp_sse import sse_response
 import jinja2
 import aiohttp_jinja2
+import pygame
 from plugin_base import PluginBase
 
 CORS_HEADERS = {
@@ -44,6 +47,7 @@ class WebFrontend(PluginBase):
                 web.post("/control/{command}", self.handle_control),
                 web.get("/goto/{round:[0-9]+}/{group:[0-9]+}", self.handle_goto),
                 web.get("/state-stream", self.handle_state_stream),
+                web.get("/test", self.test),
 
                 #web.get("/reset", self.handle_reset),
                 web.post("/timesync/", self.handle_timesync),
@@ -194,7 +198,53 @@ class WebFrontend(PluginBase):
     async def handle_goto(self, request):
         self.events.trigger(f"player.goto", int(request.match_info['round']), int(request.match_info['group']))
         return web.Response(status=200, text=f"Done")
+    
+    # Play a series of test sounds to check the audio system is working and the correct voice is loaded
+    async def test(self, request):
+        import audio_library
 
+        async def wait_for_audio(initial_delay=0.5):
+             await asyncio.sleep(initial_delay)
+             while pygame.mixer.get_busy():
+                    await asyncio.sleep(0.2)
+
+        self.logger.info("Testing audio system with test sounds")
+        self.events.trigger(f"audioplayer.play_integer", 5)
+        await asyncio.sleep(0.6)
+        self.events.trigger(f"audioplayer.play_integer", 19)
+        
+        await asyncio.sleep(2)
+
+        self.events.trigger(f"audioplayer.play_integer", 8)
+        await asyncio.sleep(0.5)
+        self.events.trigger(f"audioplayer.play_literally_minutes")           
+        
+        await asyncio.sleep(2)
+
+        test_sounds = [
+            audio_library.effect_start_signal,
+            audio_library.effect_countdown_beeps,
+            audio_library.effect_countdown_beeps_3s,
+            audio_library.effect_countdown_beeps_end,
+        ]
+        for audio in test_sounds:
+            self.events.trigger(f"audioplayer.play_audio", audio)
+            await wait_for_audio()
+            await asyncio.sleep(1)
+
+        for audio in audio_library.language_audio.values():
+            self.events.trigger(f"audioplayer.play_audio", audio)
+            await wait_for_audio()
+            await asyncio.sleep(1)
+            
+        for audio in audio_library.task_audio.values():
+            self.events.trigger(f"audioplayer.play_audio", audio)
+            await wait_for_audio()
+            await asyncio.sleep(1)
+
+
+        return web.Response(status=200, text="Test sounds played")
+    
     async def handle_control(self, request):
         self.events.trigger(f"player.{request.match_info['command']}")
         if request.match_info['command']=="reset":
