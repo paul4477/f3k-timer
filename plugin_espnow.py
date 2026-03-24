@@ -74,16 +74,14 @@ class ESPNow(PluginBase):
             self.write_message('time', state.get_dict())
 
     async def onSecond(self, state):
-        # We're using onTick for time updates, so we can use onSecond for less frequent updates like pilot/group defs
-        ##self.write_message('time', state.get_dict())
-
         ## Decide if we want to send group/pilot info (doing it less frequently)
         ## In prep section - send pilot defs every minute and at start of section
-        if isinstance(state.section, f3k_cl_competition.PrepSection) and \
-            ((state.slot_time % 60 == 50) or (state.slot_time == state.section.sectionTime)):
+        if isinstance(state.section, f3k_cl_competition.PrepSection):
+            if (state.slot_time % 60 == 50) or (state.slot_time == state.section.sectionTime):
             # Send each pilot definition
-            for pilot_id in state.group.pilots:
-                self.write_message('p_def', state.player.pilots[pilot_id].get_dict())
-            self.write_message('p_list', state.group.pilots)
-    
+                for pilot_id in state.group.pilots:
+                    self.write_message('p_def', state.player.pilots[pilot_id].get_dict())
+            elif (state.slot_time % 60 == 45):                    
+                self.write_message('p_list', state.group.pilots)
+
 
