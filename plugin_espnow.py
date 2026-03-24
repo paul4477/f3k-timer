@@ -13,9 +13,6 @@ class ESPNow(PluginBase):
         self.format = self.config.get('format', 'json') # Default format json|struct
         self.port = None
         self.init_port()
-        try: self.rate_limit = 1 / int(self.config.get('rate_limit', 1))
-        except ValueError: self.rate_limit = 1
-        self.last_update = 0
     
     def write(self, s):
         if not self.broadcast:

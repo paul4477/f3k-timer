@@ -46,9 +46,14 @@ class SerialJson(PluginBase):
         self.logger.debug(f"Sending message: {message}, length: {len(message)}")
         self.write(message)
 
+    async def onTick(self, state):
+        if not self.limit_rate():        
+            #self.write(json.dumps(state.get_dict()).encode('ascii'))
+            self.write_message('time', state.get_dict())
+
     async def onSecond(self, state):
-        # Do our normal onSecond time update
-        self.write_message('time', state.get_dict())
+        # Leave the time updates to the onTick method
+        ##self.write_message('time', state.get_dict())
 
         ## Decide if we want to send group/pilot info (doing it less frequently)
         ## In prep section - send pilot defs every minute and at start of section
@@ -58,3 +63,4 @@ class SerialJson(PluginBase):
             for pilot_id in state.group.pilots:
                 self.write_message('p_def', state.player.pilots[pilot_id].get_dict())
             self.write_message('p_list', state.group.pilots)
+

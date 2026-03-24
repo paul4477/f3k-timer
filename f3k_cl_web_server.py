@@ -30,7 +30,6 @@ class WebFrontend(PluginBase):
         self.events = events
         self.event_data_loaded = False
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.last_update = 0
         self.groupDict = {}
         self.roundDict = {}
         #self.register_more_handlers()

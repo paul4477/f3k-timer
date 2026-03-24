@@ -6,10 +6,12 @@ class PluginBase():
         self.logger = logging.getLogger(self.__class__.__name__)
         self.events = events
         self.register_handlers()
-        self.rate_limit = 1
         self._enabled = True
+        self.last_update = 0
         self.config = config
-    
+        try: self.rate_limit = 1 / int(self.config.get('rate_limit', 1))
+        except ValueError: self.rate_limit = 1
+
     def register_handlers(self):
         self.events.on(f"{self.__class__.__name__}.tick")(self.onTick)
         self.events.on(f"{self.__class__.__name__}.second")(self.onSecond)
