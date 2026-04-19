@@ -55,6 +55,9 @@ class WebFrontend(PluginBase):
 
                 web.get("/groupData", self.handle_groupData),
                 web.get("/roundData", self.handle_roundData),
+
+                web.get("/sound-test", self.handle_sound_test_page),
+                web.post("/play-sound", self.handle_play_sound),
             ]
         )
 
@@ -193,6 +196,92 @@ class WebFrontend(PluginBase):
         self.logger.info(f"Handling set_event_config: {data}")
         self.events.trigger("player.set_event_config", data)
         return web.Response(status=200, text="Done")
+
+    async def handle_sound_test_page(self, request):
+        import task_data
+        import audio_library
+        numbers = [str(n) for n in sorted(audio_library.time_sounds.keys())]
+        language_phrases = [
+            ("vx_prep_starting",   "Prep starting"),
+            ("vx_prep_start",      "Prep started"),
+            ("vx_group_sep",       "Group separation"),
+            ("vx_round",           "Round"),
+            ("vx_group",           "Group"),
+            ("vx_1m_to_test",      "1m to test"),
+            ("vx_30s_to_test",     "30s to test"),
+            ("vx_20s_to_test",     "20s to test"),
+            ("vx_test_time",       "Test time"),
+            ("vx_1m_to_no_fly",    "1m to no-fly"),
+            ("vx_30s_to_no_fly",   "30s to no-fly"),
+            ("vx_20s_to_no_fly",   "20s to no-fly"),
+            ("vx_no_flying",       "No flying"),
+            ("vx_3m_window",       "3m window"),
+            ("vx_7m_window",       "7m window"),
+            ("vx_10m_window",      "10m window"),
+            ("vx_15m_window",      "15m window"),
+            ("vx_1m_to_working_time",  "1m to working"),
+            ("vx_30s_to_working_time", "30s to working"),
+            ("vx_20s_to_working_time", "20s to working"),
+            ("vx_30s_landing_window",  "30s landing window"),
+        ]
+        tasks = [(k, v['name']) for k, v in task_data.f3k_task_timing_data.items()]
+        context = {
+            'numbers': numbers,
+            'language_phrases': language_phrases,
+            'tasks': tasks,
+        }
+        return aiohttp_jinja2.render_template('sound_test.html', request, context=context)
+
+    async def handle_play_sound(self, request):
+        import audio_library
+
+        VALID_EFFECTS = {'start_signal', 'countdown_beeps', 'countdown_beeps_3s', 'countdown_beeps_end'}
+        VALID_UNITS   = {'second', 'seconds', 'minute', 'minutes'}
+
+        try:
+            data = await request.json()
+            category = data.get('category', '')
+            key      = data.get('key', '')
+        except Exception:
+            return web.Response(status=400, text='Invalid JSON')
+
+        if category == 'effect':
+            if key not in VALID_EFFECTS:
+                return web.Response(status=400, text=f'Unknown effect: {key}')
+            audio_obj = getattr(audio_library, f'effect_{key}', None)
+            if audio_obj is None:
+                return web.Response(status=400, text=f'Effect not loaded: {key}')
+            self.events.trigger('audioplayer.play_audio', audio_obj)
+
+        elif category == 'number':
+            try:
+                n = int(key)
+            except (ValueError, TypeError):
+                return web.Response(status=400, text='Key must be an integer')
+            if n not in audio_library.time_sounds:
+                return web.Response(status=400, text=f'No sound for number: {n}')
+            self.events.trigger('audioplayer.play_integer', n)
+
+        elif category == 'unit':
+            if key not in VALID_UNITS:
+                return web.Response(status=400, text=f'Unknown unit: {key}')
+            self.events.trigger(f'audioplayer.play_literally_{key}')
+
+        elif category == 'language':
+            if key not in audio_library.language_audio:
+                return web.Response(status=400, text=f'Unknown language key: {key}')
+            self.events.trigger('audioplayer.play_audio', audio_library.language_audio[key])
+
+        elif category == 'task':
+            if key not in audio_library.task_audio:
+                return web.Response(status=400, text=f'Unknown task key: {key}')
+            self.events.trigger('audioplayer.play_audio', audio_library.task_audio[key])
+
+        else:
+            return web.Response(status=400, text=f'Unknown category: {category}')
+
+        self.logger.info(f'play-sound: {category}/{key}')
+        return web.Response(status=200, text='OK')
 
     async def handle_goto(self, request):
         self.events.trigger(f"player.goto", int(request.match_info['round']), int(request.match_info['group']))
