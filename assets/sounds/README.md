@@ -59,10 +59,6 @@ tones:
 - `square` - Square wave (sharper, more defined)
 - `sqsaw` - Hybrid square + sawtooth (rich, complex tone)
 
-### `tone_config_play.yml`
-
-Alternative configuration for playing/testing tones.
-
 ## Generated Files
 
 Tones are saved as WAV files (44.1 kHz, 16-bit mono) in this directory:
@@ -71,8 +67,8 @@ Tones are saved as WAV files (44.1 kHz, 16-bit mono) in this directory:
 
 - `start_signal.wav` - Competition start signal
 - `4321_normal.wav` - Countdown sequence (4-3-2-1)
-- `4321_3s.wav` - Extended countdown (3 seconds per beat)
-- `4321_short_down.wav` - Short countdown
+- `4321_3s.wav` - Extended countdown (3 seconds for final signal)
+- `4321_short_down.wav` - Short countdown to "no fly" sections
 - `normal_1s.wav` - Standard single tone
 
 ## How It Works
