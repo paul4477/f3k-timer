@@ -23,6 +23,9 @@ RULES_FILE="/etc/udev/rules.d/99-usb-serial.rules"
 TEMP_RULES_FILE="/tmp/99-usb-serial.rules.tmp"
 
 # Parse command line arguments
+INTERACTIVE=true
+DEVICE_NAMES=()
+
 while [[ $# -gt 0 ]]; do
     case $1 in
         --create)
@@ -33,12 +36,30 @@ while [[ $# -gt 0 ]]; do
             RELOAD_RULES=true
             shift
             ;;
+        --name)
+            if [[ -z "${2:-}" ]]; then
+                echo "Error: --name requires an argument"
+                exit 1
+            fi
+            # Store comma-separated names
+            IFS=',' read -ra DEVICE_NAMES <<< "$2"
+            INTERACTIVE=false
+            shift 2
+            ;;
+        --batch)
+            INTERACTIVE=false
+            shift
+            ;;
         --help|-h)
-            echo "Usage: $0 [--create] [--reload]"
+            echo "Usage: $0 [OPTIONS]"
             echo ""
             echo "Options:"
-            echo "  --create    Write rules to $RULES_FILE"
-            echo "  --reload    Reload udev rules (requires --create and sudo)"
+            echo "  --create              Write rules to $RULES_FILE"
+            echo "  --reload              Reload udev rules (requires --create and sudo)"
+            echo "  --name <names>        Device names (comma-separated for multiple devices)"
+            echo "                        If not specified, you'll be prompted for each device"
+            echo "  --batch               Skip interactive prompts, use calculated names"
+            echo "  --help                Show this help message"
             exit 0
             ;;
         *)
@@ -105,6 +126,17 @@ for tty_device in /dev/ttyUSB* /dev/ttyACM*; do
         echo "  Manufacturer:     $MANUFACTURER"
         echo "  Product:          $PRODUCT_NAME"
         echo "  Suggested Name:   /dev/$DEVICE_NAME"
+        echo ""
+        
+        # Get device name from --name parameter if provided, otherwise prompt user
+        if [[ "$INTERACTIVE" == true ]]; then
+            read -p "Confirm device name [$DEVICE_NAME] or enter alternative: " USER_INPUT
+            if [[ -n "$USER_INPUT" ]]; then
+                DEVICE_NAME="$USER_INPUT"
+            fi
+        elif [[ ${#DEVICE_NAMES[@]} -gt $DEVICE_COUNT && -n "${DEVICE_NAMES[$DEVICE_COUNT]}" ]]; then
+            DEVICE_NAME="${DEVICE_NAMES[$DEVICE_COUNT]}"
+        fi
         echo ""
         
         # Build udev rule - prefer serial number, fall back to vendor+product
@@ -184,4 +216,10 @@ else
     echo ""
     echo "Or run this script with --create --reload flags to do it automatically:"
     echo "  sudo $0 --create --reload"
+    echo ""
+    echo "To skip interactive prompts:"
+    echo "  $0 --batch --create --reload"
+    echo ""
+    echo "To specify device names directly (comma-separated for multiple):"
+    echo "  $0 --name device1,device2 --create --reload"
 fi
