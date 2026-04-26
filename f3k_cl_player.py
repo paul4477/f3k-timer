@@ -337,9 +337,7 @@ class Player:
 
             # Audio is not ready, so update consumers and return to outer loop
             for consumer in self.eventConsumers:
-                self.events.trigger(f"{consumer.__class__.__name__}.tick", self.state)
-            for consumer in self.eventConsumers:
-                self.events.trigger(f"{consumer.__class__.__name__}.second", self.state)                
+                self.events.trigger(f"{consumer.__class__.__name__}.tick", self.state)                
             #await asyncio.sleep(0.1)
             if self.state.group.announce_sound is None and not self.state.group.announce_sound_generating:
                 announcement = f"This is Round {self.state.round.round_number}. Group: {self.state.group.group_letter}.\n"
