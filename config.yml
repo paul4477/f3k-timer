@@ -9,7 +9,7 @@ voice: en_US-lessac-medium
 name: web
 port: 80 # Port to run the web server on
 ---
-name: Web
+name: ExternalWebService
 module: plugin_web_service
 object_name: WebService
 url: https://fxtiming.ddns.net/api/event/
@@ -18,7 +18,7 @@ method: POST
 name: Pandora
 module: plugin_pandora
 object_name: Pandora
-device: /dev/ttyUSB0
+device: /dev/pandora # use enumerate_usb_serial.sh to set a fixed device name for the serial device
 baud: 19200
 bits: 8
 parity: N
