@@ -11,27 +11,45 @@ An event-driven, asynchronous Python application for managing F3K model aircraft
 
 ### Setup
 
-1. **Create and activate a virtual environment:**
+Run the automated setup script:
+
+```bash
+./setup.sh
+```
+
+This will:
+
+- Create a Python virtual environment (`venv-f3k-timer`)
+- Install dependencies from `requirements.txt`
+- Download text-to-speech voice models
+- Generate audio tones and speech assets
+
+**On Windows**, if `./setup.sh` doesn't work, manually run:
+
+```bash
+python -m venv venv-f3k-timer
+venv-f3k-timer\Scripts\activate
+pip install -r requirements.txt
+cd assets\voice_data && python -m piper.download_voices en_US-lessac-medium && cd ..\..
+cd assets\sounds && python generate_language.py && cd ..\..
+```
+
+### Running the Application
+
+1. **Activate the virtual environment:**
 
    ```bash
-   python -m venv venv-f3k-timer
    source venv-f3k-timer/bin/activate  # On Windows: venv-f3k-timer\Scripts\activate
    ```
 
-2. **Install dependencies:**
-
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Run the application:**
+2. **Start the application:**
    ```bash
    python f3k_timer.py
    ```
 
 The web interface will be available at `http://localhost:80` (or the configured port in `config.yml`).
 
-4. **View logs:**
+3. **View logs:**
    ```bash
    tail -f f3k_timer.log  # On Windows: use type f3k_timer.log or a text editor
    ```
