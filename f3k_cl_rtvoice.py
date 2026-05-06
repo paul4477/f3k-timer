@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import os
+import re
 import wave
 import pygame
 from io import BytesIO
@@ -16,11 +17,12 @@ syn_config = SynthesisConfig(
 )
 
 class Voice:
-        def __init__(self, voice_name, events, config=syn_config):
+        def __init__(self, voice_name, events, config=syn_config, substitutions=None):
               self.logger = logging.getLogger(self.__class__.__name__)
               self.voice_name = voice_name
               self.syn_config = config
               self.events = events
+              self._substitutions = substitutions or {}
               ## Check the path we are loading exists and log error if it doesn't.
               if not os.path.exists(os.path.join("assets", "voice_data",f'{voice_name}.onnx')): 
                 self.logger.error(f"Voice data file not found: {os.path.join('assets', 'voice_data',f'{voice_name}.onnx')}")
@@ -29,6 +31,13 @@ class Voice:
                 self._voice = PiperVoice.load(os.path.join("assets", "voice_data",f'{voice_name}.onnx'),
                                              config_path=os.path.join("assets", "voice_data",f'{voice_name}.onnx.json'))
               self.register_handlers()
+
+        def _apply_substitutions(self, text):
+            for word, replacement in self._substitutions.items():
+                print(f"Applying substitution: {word} -> {replacement}")
+                text = re.sub(r'\b' + re.escape(word) + r'\b', replacement, text)
+            print(text)
+            return text
 
         def register_handlers(self):
             self.events.on("rtvoice.generate_and_store_sound")(self.generate_and_store_sound)
@@ -41,8 +50,10 @@ class Voice:
               wav_file = BytesIO()
               self.logger.debug("Received gernerate_and_store event")
               first = True
+
               with wave.open(wav_file, "wb") as wf:
                 for sentance in text_to_speech.split("\n"):
+                  sentance = self._apply_substitutions(sentance)
                   if first: 
                       self._voice.synthesize_wav(sentance, wf, self.syn_config)
                       first = False
@@ -66,6 +77,7 @@ class Voice:
               first = True
               with wave.open(wav_file, "wb") as wf:
                 for sentance in text_to_speech.split("\n"):
+                  sentance = self._apply_substitutions(sentance)
                   if first: 
                       self._voice.synthesize_wav(sentance, wf, self.syn_config)
                       first = False

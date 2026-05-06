@@ -4,7 +4,7 @@ import pygame
 import yaml
 import logging
 
-logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.ERROR, filename='f3k_timer.log')
+logging.basicConfig(format='%(asctime)s.%(msecs)03d %(name)s %(levelname)s:%(message)s', datefmt='%m/%d/%Y %H:%M:%S', level=logging.DEBUG, filename='f3k_timer.log')
 
 logger = logging.getLogger(__name__)
 pygame.mixer.init(frequency=44100, size=-16, channels=1)
@@ -14,6 +14,7 @@ from f3k_cl_event_engine import EventEngine, Clock
 async def main():
     config_data = {}
     main_config = {}
+    tts_config = {}
     try:
         with open("config.yml", 'r') as config_file:
             config_data = list(yaml.load_all(config_file, Loader=yaml.SafeLoader))
@@ -39,6 +40,10 @@ async def main():
             ## Web server config - not likely to change from defaults
             elif config_section['name'] == "web":
                 web_config = config_section
+
+            ## TTS pronunciation substitutions
+            elif config_section['name'] == "tts":
+                tts_config = config_section
 
             ## Plugins - a section for each. We ignore sections that don't have module/object_name defined
             elif 'module' in config_section and 'object_name' in config_section:
@@ -71,7 +76,7 @@ async def main():
 
     # Realtime Voice is used occaissionally to generate audio
     import f3k_cl_rtvoice
-    player.add_event_consumer(f3k_cl_rtvoice.Voice(main_config.get('voice', 'en_US-lessac-medium'), events))
+    player.add_event_consumer(f3k_cl_rtvoice.Voice(main_config.get('voice', 'en_US-lessac-medium'), events, substitutions=tts_config.get('substitutions', {})))
 
     # Initialize player to not running state with "ShowTimeSection"
     player.init_pre_comp()
