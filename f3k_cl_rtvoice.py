@@ -34,9 +34,7 @@ class Voice:
 
         def _apply_substitutions(self, text):
             for word, replacement in self._substitutions.items():
-                print(f"Applying substitution: {word} -> {replacement}")
                 text = re.sub(r'\b' + re.escape(word) + r'\b', replacement, text)
-            print(text)
             return text
 
         def register_handlers(self):
