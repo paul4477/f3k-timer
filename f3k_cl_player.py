@@ -162,8 +162,12 @@ class State:
 
     def get_dict(self):
         if self.player.started and (self.section is not None):
+            if isinstance(self.section, f3k_cl_competition.CountdownToWorkingMixin):
+                slot_time_out = self.section.get_time_to_working(self.slot_time)
+            else:
+                slot_time_out = self.slot_time
             return {
-                    'slot_time': self.slot_time, 
+                    'slot_time': slot_time_out,
                     'no_fly': self.is_no_fly(),
                     'time_s': self.time_str,
                     'r_num': self.round.round_number if self.round else '-',
@@ -221,6 +225,7 @@ class Player:
         self.event_config.setdefault('land_time', 30)
         self.event_config.setdefault('group_separation_time', 120)
         self.event_config.setdefault('competition_start_time', 600)  # 10:00 AM in minutes from midnight
+        self.event_config.setdefault('countdown_to_working_time', False)
         self.logger.info(f"Player configuration after defaults: {self.event_config}")
 
     def register_handlers(self):
@@ -301,10 +306,10 @@ class Player:
         self.state.goto(round, group)
 
     async def update_event_config(self, config_updates: dict):
-        allowed = {'prep_time', 'group_separation_time', 'use_strict_test_time', 'competition_start_time'}
+        allowed = {'prep_time', 'group_separation_time', 'use_strict_test_time', 'competition_start_time', 'countdown_to_working_time'}
         for key in allowed:
             if key in config_updates:
-                if key == 'use_strict_test_time':
+                if key in ('use_strict_test_time', 'countdown_to_working_time'):
                     self.event_config[key] = bool(config_updates[key])
                 else:
                     self.event_config[key] = int(config_updates[key])

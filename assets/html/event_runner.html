@@ -178,7 +178,7 @@
             <div class="mb-2">
               <label class="form-label" for="prep_time">Prep Time:</label>
               <select class="form-select" id="prep_time">
-                {% for m in range(1, 11) %}
+                {% for m in range(4, 11) %}
                 <option value="{{ m * 60 }}" {{ 'selected' if prep_time == m * 60 else '' }}>{{ m }} min</option>
                 {% endfor %}
               </select>
@@ -186,7 +186,7 @@
             <div class="mb-2">
               <label class="form-label" for="group_separation_time">Group Separation Time:</label>
               <select class="form-select" id="group_separation_time">
-                {% for m in range(1, 11) %}
+                {% for m in range(1, 6) %}
                 <option value="{{ m * 60 }}" {{ 'selected' if group_separation_time == m * 60 else '' }}>{{ m }} min</option>
                 {% endfor %}
               </select>
@@ -202,6 +202,10 @@
             <div class="mb-2 form-check">
               <input type="checkbox" class="form-check-input" id="use_strict_test_time" {{ 'checked' if use_strict_test_time else '' }}>
               <label class="form-check-label" for="use_strict_test_time">Use Strict Test Time</label>
+            </div>
+            <div class="mb-2 form-check">
+              <input type="checkbox" class="form-check-input" id="countdown_to_working_time" {{ 'checked' if countdown_to_working_time else '' }}>
+              <label class="form-check-label" for="countdown_to_working_time">Countdown to Working Time</label>
             </div>
           </div>
         </div>

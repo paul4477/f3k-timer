@@ -73,6 +73,9 @@ def load_audio_library(main_config):
   "vx_10m_window",
   "vx_15m_window",
 
+  "vx_5m_to_working_time",
+  "vx_4m_to_working_time",
+  "vx_3m_to_working_time",
   "vx_1m_to_working_time",
   "vx_30s_to_working_time",
   "vx_20s_to_working_time",

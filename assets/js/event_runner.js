@@ -74,6 +74,7 @@ async function handleSetConfigButton() {
   const group_separation_time = document.getElementById('group_separation_time').value;
   const use_strict_test_time = document.getElementById('use_strict_test_time').checked;
   const competition_start_time = document.getElementById('competition_start_time').value;
+  const countdown_to_working_time = document.getElementById('countdown_to_working_time').checked;
 
   try {
     const response = await fetch('/set_event_config', {
@@ -83,7 +84,8 @@ async function handleSetConfigButton() {
         prep_time: parseInt(prep_time),
         group_separation_time: parseInt(group_separation_time),
         use_strict_test_time: use_strict_test_time,
-        competition_start_time: parseInt(competition_start_time)
+        competition_start_time: parseInt(competition_start_time),
+        countdown_to_working_time: countdown_to_working_time
       })
     });
     if (!response.ok) {
@@ -170,6 +172,7 @@ document.getElementById('goto').addEventListener('click', handleGoToButton);
   document.getElementById('group_separation_time').addEventListener('change', handleSetConfigButton);
   document.getElementById('competition_start_time').addEventListener('change', handleSetConfigButton);
   document.getElementById('use_strict_test_time').addEventListener('change', handleSetConfigButton);
+  document.getElementById('countdown_to_working_time').addEventListener('change', handleSetConfigButton);
 }
 
 

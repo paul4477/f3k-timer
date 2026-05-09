@@ -4,6 +4,7 @@ import asyncio
 
 from plugin_base import PluginBase
 import audio_library
+import f3k_cl_competition
 
 class AudioPlayer(PluginBase):
 
@@ -46,8 +47,8 @@ class AudioPlayer(PluginBase):
       #if state.slot_time == state.section.start_audio[0]:
       #   self.events.trigger(f"audioplayer.play_audio", state.section.start_audio[1])
 
-      if state.slot_time in state.section.say_seconds:
-          seconds = state.slot_time
+      if state.slot_time in state.section.callout_schedule:
+          seconds = state.section.callout_schedule[state.slot_time]
           self.logger.debug(f"in onSecond. state.slot_time is {state.slot_time}")
           if seconds % 15 == 0 and seconds > 60:
             match (seconds%60):
@@ -95,17 +96,22 @@ class AudioPlayer(PluginBase):
         pass  
     
     async def play_integer(self, number):
+        self.logger.debug(f"AudioPlayer: Playing integer {number}")
         try: audio_library.time_sounds[number].play()
         except IndexError:
             self.logger.error(f"AudioPlayer: No sound for integer {number}")
 
     async def play_literally_seconds(self):
+        self.logger.debug("AudioPlayer: Playing literally seconds")
         audio_library.effect_seconds.play()
     async def play_literally_minutes(self):
+        self.logger.debug("AudioPlayer: Playing literally minutes")
         audio_library.effect_minutes.play()        
     async def play_literally_second(self):
+        self.logger.debug("AudioPlayer: Playing literally second")
         audio_library.effect_second.play()
     async def play_literally_minute(self):
+        self.logger.debug("AudioPlayer: Playing literally minute")
         audio_library.effect_minute.play()         
     
     async def onPlayBytes(self, bytesio):

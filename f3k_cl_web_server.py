@@ -137,6 +137,7 @@ class WebFrontend(PluginBase):
                 'group_separation_time': event_config.get('group_separation_time', 120),
                 'use_strict_test_time': event_config.get('use_strict_test_time', False),
                 'competition_start_time': event_config.get('competition_start_time', 600),
+                'countdown_to_working_time': event_config.get('countdown_to_working_time', False),
             }
             response = aiohttp_jinja2.render_template(template_path, request,
                                           context=context)

@@ -18,11 +18,16 @@ class Section:
         self.betweenWorkingTimes = False
         self.section_index = section_index
         self.sectionTime = seconds_length
-        # List of times that will trigger audio calls
-        # Default is every 30 seconds + 20 down to 5.
-        # Excluding the first second which will usually be covered by the pre-section
-        # announcement or the start of section announcement
-        self.say_seconds = list((x for x in range(seconds_length-1, 0 ,-1) if x%30==0)) + list(range(20,2,-1))
+        # Dict mapping section-relative slot_time (when to fire) to the value
+        # to speak (what to say).  In normal sections these are equal; in
+        # CountdownToWorkingMixin sections the spoken value is the
+        # countdown-to-working-time equivalent.
+        # Default: every 30 seconds + 20 down to 3, key == value.
+        self.callout_schedule = {
+            t: t for t in
+            [x for x in range(seconds_length - 1, 0, -1) if x % 30 == 0]
+            + list(range(20, 2, -1))
+        }
         # Dict of timestamps for audio callouts
         # All these must be integer second values
         self.audio_times = {}
@@ -77,9 +82,64 @@ class Section:
         return f"{int(slot_time / 60):02d}{slot_time % 60:02d}"
 
     def set_audio_time(self, t, sound):
-        try: self.say_seconds.remove(t)
-        except ValueError: pass
+        self.callout_schedule.pop(t, None)
         self.audio_times[t] = sound
+
+
+class CountdownToWorkingMixin:
+    """Mixin for prep/test/no-fly sections in countdown-to-working-time mode.
+
+    Stores a pre-computed offset (sum of the durations of all sections that
+    follow this one up to, but not including, WorkingSection) and overrides
+    the display helpers so that the big timer and scoreboards show the total
+    time remaining until working time begins.
+
+    populate_audio_times() calls super() to let the parent section class
+    build its normal callout_schedule (with its own pruning), then walks the
+    result and replaces the spoken value for any entry with a trigger time
+    above the final-approach threshold: the spoken value becomes
+    trigger_time + countdown_offset, i.e. the countdown-to-working value.
+    Entries at or below the threshold (15s) are left unchanged so that
+    section-relative final-approach callouts ("15", "10"... "3") still fire.
+
+    pre_announce_times on the next section ("30 seconds to working time"
+    etc.) are entirely unaffected and continue to take precedence as the
+    more descriptive announcement.
+    """
+
+    def __init__(self, *args, countdown_offset=0, **kwargs):
+        self.countdown_offset = countdown_offset
+        super().__init__(*args, **kwargs)
+
+    def get_time_to_working(self, slot_time):
+        """Return the total seconds remaining until working time starts."""
+        return slot_time + self.countdown_offset
+
+    def get_time_str(self, slot_time):
+        t = self.get_time_to_working(slot_time)
+        return f"{int(t / 60):02d}:{t % 60:02d}"
+
+    def get_time_digits(self, slot_time):
+        t = self.get_time_to_working(slot_time)
+        return f"{int(t / 60):02d}{t % 60:02d}"
+
+    def populate_audio_times(self):
+        
+        super().populate_audio_times()  # parent builds its callout_schedule normally
+        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. Initial callout_schedule: {self.callout_schedule}")
+        FINAL_APPROACH_THRESHOLD = 15
+        self.callout_schedule = {
+            sv: (sv + self.countdown_offset if sv > FINAL_APPROACH_THRESHOLD else sv)
+            for sv, _ in self.callout_schedule.items()
+        }
+        
+        # If we are in a PrepSection, add callouts at 3, 4 and 5 minutes before working time.
+        if isinstance(self, PrepSection):
+            for t in [5*60, 4*60, 3*60]:
+                if self.sectionTime + self.countdown_offset > t:
+                    self.set_audio_time(t - self.countdown_offset, audio_library.language_audio[f'vx_{t//60}m_to_working_time'])
+        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. Adjusted callout_schedule: {self.callout_schedule}")
+        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. audio_times: {self.audio_times}")
 
 class PrepSection(Section):
     def is_no_fly(self):
@@ -94,34 +154,24 @@ class PrepSection(Section):
 
 
     def populate_audio_times(self):
-        try:
-            self.say_seconds.remove(19)
-            self.say_seconds.remove(18)
-            self.say_seconds.remove(17)
-            self.say_seconds.remove(16)
-            self.say_seconds.remove(14)
-            self.say_seconds.remove(13)
-            self.say_seconds.remove(12)
-            self.say_seconds.remove(11)
+        # Remove callouts that clash with section-start sounds or are
+        # covered by pre_announce_times on following sections
+        
+        self.callout_schedule = {
+            t: t for t in
+                [15] + list(range(10, 2, -1))
+        }
 
-            self.say_seconds.remove(20)
-            self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
-            self.say_seconds.remove(60)
-        except ValueError:
-            pass
+        self.callout_schedule.pop(self.sectionTime - 120, None)
+
         if isinstance(self.get_next_section(), TestSection):
-            self.audio_times[2] = audio_library.effect_countdown_beeps
+            self.set_audio_time(2, audio_library.effect_countdown_beeps)
         else:
-            self.audio_times[2] = audio_library.effect_countdown_beeps_end
-        try:
-            self.say_seconds.remove(self.sectionTime - 120)       # For announcement (below)
-        except ValueError:            
-            pass
-        
-        self.audio_times[self.sectionTime - 1] = audio_library.language_audio['vx_prep_start']
-        self.audio_times[self.sectionTime - 3] = audio_library.task_audio[self.round.short_code]
-        self.audio_times[self.sectionTime - 120] = self.announcement
-        
+            self.set_audio_time(2, audio_library.effect_countdown_beeps_end)
+
+        self.set_audio_time(self.sectionTime - 1, audio_library.language_audio['vx_prep_start'])
+        self.set_audio_time(self.sectionTime - 3, audio_library.task_audio[self.round.short_code])
+        self.set_audio_time(self.sectionTime - 120, self.announcement)
 
     def announcement(self):
         return self.group.announce_sound
@@ -134,18 +184,10 @@ class TestSection(Section):
     def get_description(self):
         return "Test Flying Time"  
     def populate_audio_times(self):
-
-        try:
-            self.say_seconds.remove(16)
-            self.say_seconds.remove(17)
-            self.say_seconds.remove(18)
-            self.say_seconds.remove(19)
-            self.say_seconds.remove(20)
-            self.say_seconds.remove(30) # for no-fly anouncements (or test announcements)
-        except ValueError:
-            pass
-        self.audio_times[2] = audio_library.effect_countdown_beeps_end
-        self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_test_time']
+        for t in [16, 17, 18, 19, 20, 30]:
+            self.callout_schedule.pop(t, None)
+        self.set_audio_time(2, audio_library.effect_countdown_beeps_end)
+        self.set_audio_time(self.sectionTime - 1, audio_library.language_audio['vx_test_time'])
       
     def populate_pre_announce_times(self):
         self.pre_announce_times[-60] = audio_library.language_audio['vx_1m_to_test']
@@ -160,17 +202,10 @@ class NoFlySection(Section):
     def get_description(self):
         return "No Fly Time"    
     def populate_audio_times(self):
-
-        try:
-            self.say_seconds.remove(18)
-            self.say_seconds.remove(19)
-            self.say_seconds.remove(20)
-            self.say_seconds.remove(30)
-        except ValueError:
-            pass
-
-        self.say_seconds.append(45)               
-        self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_no_flying']    
+        for t in [18, 19, 20, 30]:
+            self.callout_schedule.pop(t, None)
+        self.callout_schedule[45] = 45
+        self.set_audio_time(self.sectionTime-1, audio_library.language_audio['vx_no_flying'])    
 
     def populate_pre_announce_times(self):
         if not isinstance(self.get_previous_section(), TestSection): # Test is only 45 seconds
@@ -182,13 +217,13 @@ class NoFlySection(Section):
         if isinstance(self.group, AllUpGroup):
             ## Ending countdown is actually the start of the round
             ## so we need to use the 3s version for AllUp.
-            self.audio_times[2] = audio_library.effect_countdown_beeps_3s   
+            self.set_audio_time(2, audio_library.effect_countdown_beeps_3s)   
 
 class AllUpNoFlySection(NoFlySection):
     ## Used between the working times
     def populate_pre_announce_times(self):
         ## Alter beep f
-        self.audio_times[2] = audio_library.effect_countdown_beeps_3s   
+        self.set_audio_time(2, audio_library.effect_countdown_beeps_3s)   
         ## Previous section will be landing window
         ## Adjust announcements accordingly
         #self.pre_announce_times.pop(-60)
@@ -199,6 +234,13 @@ class AllUpNoFlySection(NoFlySection):
             return list((x for x in self.group.sections if (isinstance(x, AllUpNoFlySection) or isinstance(x, NoFlySection)))).index(self) + 1
         except ValueError:
             return 1
+
+
+class CountdownPrepSection(CountdownToWorkingMixin, PrepSection): pass
+class CountdownTestSection(CountdownToWorkingMixin, TestSection): pass
+class CountdownNoFlySection(CountdownToWorkingMixin, NoFlySection): pass
+
+
 class WorkingSection(Section):
     def is_no_fly(self):
         return False
@@ -207,28 +249,18 @@ class WorkingSection(Section):
     def get_description(self):
         return "Working Time"    
     def populate_audio_times(self):
-        try:
-            self.say_seconds.remove(19)
-            self.say_seconds.remove(18)
-            self.say_seconds.remove(17)
-            self.say_seconds.remove(16)
-            self.say_seconds.remove(14)
-            self.say_seconds.remove(13)
-            self.say_seconds.remove(12)
-            self.say_seconds.remove(11)
-        except ValueError:
-            pass
+        for t in [11, 12, 13, 14, 16, 17, 18, 19]:
+            self.callout_schedule.pop(t, None)
         match self.sectionTime:
             case 183:
-                try: self.say_seconds.remove(180)
-                except ValueError: pass
-                self.audio_times[self.sectionTime-4] = audio_library.language_audio['vx_3m_window']    
+                self.callout_schedule.pop(180, None)
+                self.set_audio_time(self.sectionTime-4, audio_library.language_audio['vx_3m_window'])    
             case 420:
-                self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_7m_window']    
+                self.set_audio_time(self.sectionTime-1, audio_library.language_audio['vx_7m_window'])    
             case 600:
-                self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_10m_window']    
+                self.set_audio_time(self.sectionTime-1, audio_library.language_audio['vx_10m_window'])    
             case 900:
-                self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_15m_window']                                                    
+                self.set_audio_time(self.sectionTime-1, audio_library.language_audio['vx_15m_window'])                                                    
 
     def populate_pre_announce_times(self):
         self.pre_announce_times[-30] = audio_library.language_audio['vx_30s_to_working_time']
@@ -242,31 +274,18 @@ class LandingSection(Section):
     def get_description(self):
         return "Landing Window"    
     def populate_audio_times(self):
-        try:
-            self.say_seconds.remove(19)
-            self.say_seconds.remove(18)
-            self.say_seconds.remove(17)
-            self.say_seconds.remove(16)
-            self.say_seconds.remove(14)
-            self.say_seconds.remove(13)
-            self.say_seconds.remove(12)
-            self.say_seconds.remove(11)
-        except ValueError:
-            pass
-        #self.say_seconds.remove(20)
-        #self.say_seconds.remove(30)
-        #self.say_seconds.remove(60)
-
-        self.audio_times[2] = audio_library.effect_countdown_beeps_end
-        self.audio_times[self.sectionTime-1] = audio_library.language_audio['vx_30s_landing_window']  
+        for t in [11, 12, 13, 14, 16, 17, 18, 19]:
+            self.callout_schedule.pop(t, None)
+        
+        self.set_audio_time(2, audio_library.effect_countdown_beeps_end)
+        self.set_audio_time(self.sectionTime-1, audio_library.language_audio['vx_30s_landing_window'])  
         
 
 class GapSection(Section):
     def get_description(self):
         return "Waiting for next group"
     def populate_audio_times(self):
-        self.say_seconds = []
-        # Reset to clear other values
+        self.callout_schedule = {}
         self.audio_times = {self.sectionTime-15: audio_library.language_audio['vx_group_sep']}
 
 class AnnounceSection(Section):
@@ -282,8 +301,7 @@ class AnnounceSection(Section):
         return "0000"
 
     def populate_audio_times(self):
-        self.say_seconds = []
-        # Reset to clear other values
+        self.callout_schedule = {}
         self.audio_times = {}
         
 class ShowTimeSection(GapSection):
@@ -305,7 +323,7 @@ class ShowTimeSection(GapSection):
     def populate_audio_times(self):
         ## COuld we add the logic here for "Starting in X minutes annoucements?"
         
-        self.say_seconds = []
+        self.callout_schedule = {}
         # Reset to clear other values
         self.audio_times = {}
 
@@ -342,17 +360,37 @@ class Group:
         work_time = getattr(self.round, 'windowTime', 600)
         land_time = self.event_config.get('land_time', 30)
         group_separation_time = self.event_config.get('group_separation_time', 120)
-        #self.logger.error(f"Populating group {self.group_letter} config: prep {prep_time}, test {test_time}, no-fly {no_fly_time}, work {work_time}, land {land_time}, gap {group_separation_time}")
+        countdown_mode = self.event_config.get('countdown_to_working_time', False)
+
+        if countdown_mode:
+            actual_prep = prep_time - test_time - no_fly_time
+            if actual_prep < 30:
+                self.logger.warning(
+                    f"countdown_to_working_time: computed prep ({actual_prep}s) is less than minimum "
+                    f"30s (prep_time={prep_time}, test={test_time}, no_fly={no_fly_time}). Clamping to 30s."
+                )
+                actual_prep = 30
+        else:
+            actual_prep = prep_time
 
         ## Passing len(self.sections) so that the section knows its own index and we
         ## can use it to reference forward and back.
         self.sections.append(AnnounceSection(999, self, self.round, len(self.sections), self.event_config))
-        if prep_time > 0:
-            self.sections.append(PrepSection(prep_time, self, self.round, len(self.sections), self.event_config))
+        if actual_prep > 0:
+            if countdown_mode:
+                self.sections.append(CountdownPrepSection(actual_prep, self, self.round, len(self.sections), self.event_config, countdown_offset=test_time + no_fly_time))
+            else:
+                self.sections.append(PrepSection(actual_prep, self, self.round, len(self.sections), self.event_config))
         if test_time > 0:
-            self.sections.append(TestSection(test_time, self, self.round, len(self.sections), self.event_config))
+            if countdown_mode:
+                self.sections.append(CountdownTestSection(test_time, self, self.round, len(self.sections), self.event_config, countdown_offset=no_fly_time))
+            else:
+                self.sections.append(TestSection(test_time, self, self.round, len(self.sections), self.event_config))
         if no_fly_time > 0:
-            self.sections.append(NoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config))
+            if countdown_mode:
+                self.sections.append(CountdownNoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config, countdown_offset=0))
+            else:
+                self.sections.append(NoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config))
         if work_time > 0:
             self.sections.append(WorkingSection(work_time, self, self.round, len(self.sections), self.event_config))
         if land_time > 0:
@@ -391,16 +429,37 @@ class AllUpGroup(Group):
         work_time = getattr(self.round, 'windowTime', 600)
         land_time = self.event_config.get('land_time', 30)
         group_separation_time = self.event_config.get('group_separation_time', 120)
+        countdown_mode = self.event_config.get('countdown_to_working_time', False)
+
+        if countdown_mode:
+            actual_prep = prep_time - test_time - no_fly_time
+            if actual_prep < 30:
+                self.logger.warning(
+                    f"countdown_to_working_time: computed prep ({actual_prep}s) is less than minimum "
+                    f"30s (prep_time={prep_time}, test={test_time}, no_fly={no_fly_time}). Clamping to 30s."
+                )
+                actual_prep = 30
+        else:
+            actual_prep = prep_time
 
         self.sections.append(AnnounceSection(999, self, self.round, len(self.sections), self.event_config))
-        if prep_time > 0:
-            self.sections.append(PrepSection(prep_time, self, self.round, len(self.sections), self.event_config))
+        if actual_prep > 0:
+            if countdown_mode:
+                self.sections.append(CountdownPrepSection(actual_prep, self, self.round, len(self.sections), self.event_config, countdown_offset=test_time + no_fly_time))
+            else:
+                self.sections.append(PrepSection(actual_prep, self, self.round, len(self.sections), self.event_config))
         if test_time > 0:
-            self.sections.append(TestSection(test_time, self, self.round, len(self.sections), self.event_config))
+            if countdown_mode:
+                self.sections.append(CountdownTestSection(test_time, self, self.round, len(self.sections), self.event_config, countdown_offset=no_fly_time))
+            else:
+                self.sections.append(TestSection(test_time, self, self.round, len(self.sections), self.event_config))
         for i in range(self.all_up_flight_count):
             if no_fly_time > 0:
                 if i == 0:
-                    self.sections.append(NoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config))
+                    if countdown_mode:
+                        self.sections.append(CountdownNoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config, countdown_offset=0))
+                    else:
+                        self.sections.append(NoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config))
                 else:
                     self.sections.append(AllUpNoFlySection(no_fly_time, self, self.round, len(self.sections), self.event_config))
             if work_time > 0:

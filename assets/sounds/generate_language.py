@@ -57,6 +57,9 @@ other_announcements = {
   'vx_20s_to_no_fly': "20 seconds to no fly time.",
   'vx_no_flying': "No Fly window. Pilots may not launch.",
 
+  "vx_3m_to_working_time": "three minutes to start of working time",
+  "vx_4m_to_working_time": "four minutes to start of working time",
+  "vx_5m_to_working_time": "five minutes to start of working time",
   "vx_1m_to_working_time": "one minute to start of working time",
   "vx_30s_to_working_time": "30 seconds to start of working time",
   "vx_20s_to_working_time": "20 seconds to start of working time",
