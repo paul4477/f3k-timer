@@ -162,10 +162,7 @@ class State:
 
     def get_dict(self):
         if self.player.started and (self.section is not None):
-            if isinstance(self.section, f3k_cl_competition.CountdownToWorkingMixin):
-                slot_time_out = self.section.get_time_to_working(self.slot_time)
-            else:
-                slot_time_out = self.slot_time
+            slot_time_out = self.section.display_time(self.slot_time)
             return {
                     'slot_time': slot_time_out,
                     'no_fly': self.is_no_fly(),

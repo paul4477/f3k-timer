@@ -81,6 +81,11 @@ class Section:
         Override in subclasses to change what scoreboards receive."""
         return f"{int(slot_time / 60):02d}{slot_time % 60:02d}"
 
+    def display_time(self, slot_time):
+        """Return the slot_time value to display (e.g. on scoreboard/web).
+        Override in subclasses to change what is shown."""
+        return slot_time
+
     def set_audio_time(self, t, sound):
         self.callout_schedule.pop(t, None)
         self.audio_times[t] = sound
@@ -114,6 +119,9 @@ class CountdownToWorkingMixin:
     def get_time_to_working(self, slot_time):
         """Return the total seconds remaining until working time starts."""
         return slot_time + self.countdown_offset
+
+    def display_time(self, slot_time):
+        return self.get_time_to_working(slot_time)
 
     def get_time_str(self, slot_time):
         t = self.get_time_to_working(slot_time)
