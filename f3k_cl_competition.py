@@ -241,7 +241,7 @@ class CountdownPrepSection(CountdownToWorkingMixin, PrepSection):
     def populate_audio_times(self):
         
         super().populate_audio_times()  # parent builds its callout_schedule normally
-        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. Initial callout_schedule: {self.callout_schedule}")
+        self.logger.debug(f"populate_audio_times in CountdownPrepSection for {self}. Initial callout_schedule: {self.callout_schedule}")
         FINAL_APPROACH_THRESHOLD = 15
         self.callout_schedule = {
             sv: (sv + self.countdown_offset if sv > FINAL_APPROACH_THRESHOLD else sv)
@@ -251,8 +251,8 @@ class CountdownPrepSection(CountdownToWorkingMixin, PrepSection):
         for t in [5*60, 4*60, 3*60]:
             if self.sectionTime + self.countdown_offset > t:
                 self.set_audio_time(t - self.countdown_offset, audio_library.language_audio[f'vx_{t//60}m_to_working_time'])
-        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. Adjusted callout_schedule: {self.callout_schedule}")
-        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. audio_times: {self.audio_times}")
+        self.logger.debug(f"populate_audio_times in CountdownPrepSection for {self}. Adjusted callout_schedule: {self.callout_schedule}")
+        self.logger.debug(f"populate_audio_times in CountdownPrepSection for {self}. audio_times: {self.audio_times}")
 
 class CountdownTestSection(CountdownToWorkingMixin, TestSection): pass
 class CountdownNoFlySection(CountdownToWorkingMixin, NoFlySection): pass
