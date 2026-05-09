@@ -140,14 +140,7 @@ class CountdownToWorkingMixin:
             sv: (sv + self.countdown_offset if sv > FINAL_APPROACH_THRESHOLD else sv)
             for sv, _ in self.callout_schedule.items()
         }
-        
-        # If we are in a PrepSection, add callouts at 3, 4 and 5 minutes before working time.
-        if isinstance(self, PrepSection):
-            for t in [5*60, 4*60, 3*60]:
-                if self.sectionTime + self.countdown_offset > t:
-                    self.set_audio_time(t - self.countdown_offset, audio_library.language_audio[f'vx_{t//60}m_to_working_time'])
         self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. Adjusted callout_schedule: {self.callout_schedule}")
-        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. audio_times: {self.audio_times}")
 
 class PrepSection(Section):
     def is_no_fly(self):
@@ -244,7 +237,23 @@ class AllUpNoFlySection(NoFlySection):
             return 1
 
 
-class CountdownPrepSection(CountdownToWorkingMixin, PrepSection): pass
+class CountdownPrepSection(CountdownToWorkingMixin, PrepSection):
+    def populate_audio_times(self):
+        
+        super().populate_audio_times()  # parent builds its callout_schedule normally
+        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. Initial callout_schedule: {self.callout_schedule}")
+        FINAL_APPROACH_THRESHOLD = 15
+        self.callout_schedule = {
+            sv: (sv + self.countdown_offset if sv > FINAL_APPROACH_THRESHOLD else sv)
+            for sv, _ in self.callout_schedule.items()
+        }
+        
+        for t in [5*60, 4*60, 3*60]:
+            if self.sectionTime + self.countdown_offset > t:
+                self.set_audio_time(t - self.countdown_offset, audio_library.language_audio[f'vx_{t//60}m_to_working_time'])
+        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. Adjusted callout_schedule: {self.callout_schedule}")
+        self.logger.debug(f"populate_audio_times in CountdownToWorkingMixin for {self}. audio_times: {self.audio_times}")
+
 class CountdownTestSection(CountdownToWorkingMixin, TestSection): pass
 class CountdownNoFlySection(CountdownToWorkingMixin, NoFlySection): pass
 
