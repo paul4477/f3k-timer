@@ -1,5 +1,6 @@
 import sys
 import wave
+import array
 import os.path
 sys.path.insert(0, "../../")
 
@@ -13,13 +14,28 @@ syn_config = SynthesisConfig(
     normalize_audio=True, 
 )
 
+SILENCE_THRESHOLD = 100  # sample amplitude below this is considered silence
+
+def trim_leading_silence(filepath):
+  with wave.open(filepath, 'rb') as wf:
+    params = wf.getparams()
+    frames = wf.readframes(wf.getnframes())
+  samples = array.array('h', frames)
+  start = next((i for i, s in enumerate(samples) if abs(s) > SILENCE_THRESHOLD), 0)
+  if start > 0:
+    with wave.open(filepath, 'wb') as wf:
+      wf.setparams(params)
+      wf.writeframes(samples[start:].tobytes())
+
 def generate_sound_file(filename, text_to_speak, voice):
   full_dir = os.path.join(language_dir, voice_dir)
-  print (os.path.join(full_dir, filename)+".wav <== "+text_to_speak)
+  filepath = os.path.join(full_dir, filename+".wav")
+  print(filepath+" <== "+text_to_speak)
   if not os.path.exists(full_dir):
     os.makedirs(full_dir, exist_ok=True)
-  with wave.open(os.path.join(full_dir, filename+".wav"), "wb") as wav_file:
+  with wave.open(filepath, "wb") as wav_file:
     voice.synthesize_wav(text_to_speak, wav_file, syn_config=syn_config)
+  trim_leading_silence(filepath)
 
 other_announcements = {
   'minute0': 'minute',
