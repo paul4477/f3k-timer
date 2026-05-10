@@ -15,7 +15,7 @@ class SerialJson(PluginBase):
         self.stop = serial.STOPBITS_ONE #self.config.get('stop', 1) # Default stop bits
         
         self.port = None
-        self._backoff = self.make_backoff(max_delay=300)
+        self._backoff = self.make_backoff(max_delay=30)
         self.init_serial()
     
     def write(self, bytes):
