@@ -15,16 +15,26 @@ class SerialJson(PluginBase):
         self.stop = serial.STOPBITS_ONE #self.config.get('stop', 1) # Default stop bits
         
         self.port = None
+        self._backoff = self.make_backoff(max_delay=300)
         self.init_serial()
     
     def write(self, bytes):
+        if self.port is None:
+            if self._backoff.ready():
+                self.init_serial()
+            if self.port is None:
+                return  # still failing, skip write
         try:
             #bytes = struct.pack('>H', len(bytes)) + bytes  # Prepend length of message as 2 bytes
             self.port.write(bytes + '\r'.encode('ascii'))
             self.port.flush()
+            self._backoff.success()
             self.logger.debug(f"Sent to serial {self.device}: {repr(bytes)}")
         except Exception as e:
-                self.logger.error(f"Write failed to device {self.device} with error: {e}")
+            self.port = None
+            delay = self._backoff.failure()
+            self.logger.error(f"Write failed to device {self.device} with error: {e}")
+            self.logger.warning(f"Retrying serial connection in {delay}s")
 
     def init_serial(self):
         try:
@@ -34,9 +44,13 @@ class SerialJson(PluginBase):
                                       parity=self.parity, 
                                       stopbits=self.stop, 
                                       timeout=None)
+            self._backoff.success()
             self.logger.debug(f"Serial port opened {self.device}")
         except Exception as e:
+            self.port = None
+            delay = self._backoff.failure()
             self.logger.error(f"Couldn't open serial port {self.device} with error: {e}")
+            self.logger.warning(f"Retrying serial connection in {delay}s")
 
     def write_message(self, msg_type='time', data={}):
         # time - time state
