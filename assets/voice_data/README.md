@@ -29,14 +29,6 @@ cd assets/sounds
 ../../venv-f3k-timer/bin/python generate_language.py --voice=en_GB-alba-medium
 ```
 
-## Regenerate tone files
-
-```
-cd assets/sounds
-
-./generate_tones.sh
-```
-
 ## Piper TTS
 
 https://github.com/OHF-Voice/piper1-gpl?tab=readme-ov-file
