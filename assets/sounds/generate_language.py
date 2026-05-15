@@ -26,6 +26,7 @@ def trim_leading_silence(filepath):
     with wave.open(filepath, 'wb') as wf:
       wf.setparams(params)
       wf.writeframes(samples[start:].tobytes())
+      print(f"Trimming {start} samples ({start / params.framerate:.3f}s) of leading silence")
 
 def generate_sound_file(filename, text_to_speak, voice):
   full_dir = os.path.join(language_dir, voice_dir)

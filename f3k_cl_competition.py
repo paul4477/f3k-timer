@@ -171,7 +171,7 @@ class PrepSection(Section):
             self.set_audio_time(2, audio_library.effect_countdown_beeps_end)
 
         self.set_audio_time(self.sectionTime - 1, audio_library.language_audio['vx_prep_start'])
-        self.set_audio_time(self.sectionTime - 3, audio_library.task_audio[self.round.short_code])
+        self.set_audio_time(self.sectionTime - 5, audio_library.task_audio[self.round.short_code])
         self.set_audio_time(self.sectionTime - 120, self.announcement)
 
     def announcement(self):
