@@ -9,6 +9,10 @@ def load_audio_library(main_config):
   voice_name = '_'.join(main_config.get('voice', 'en_US-lessac-medium').split('_')[1:])
   language = main_config.get('voice', 'en_US-lessac-medium').split('_')[0]
 
+  global loaded_voice, loaded_language
+  loaded_voice = voice_name
+  loaded_language = language
+
   ## Count sounds
   effect_0 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0000.wav')
   effect_1 = pygame.mixer.Sound(f'assets/sounds/{language}/{voice_name}/0001.wav')

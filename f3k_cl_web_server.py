@@ -198,6 +198,18 @@ class WebFrontend(PluginBase):
         self.events.trigger("player.set_event_config", data)
         return web.Response(status=200, text="Done")
 
+    @staticmethod
+    def _scan_voices(language='en'):
+        """Return sorted list of voice dir names under assets/sounds/{language}/ that contain vx_*.wav files."""
+        from pathlib import Path
+        base = Path('assets/sounds') / language
+        voices = []
+        if base.is_dir():
+            for d in base.iterdir():
+                if d.is_dir() and any(d.glob('vx_*.wav')):
+                    voices.append(d.name)
+        return sorted(voices)
+
     async def handle_sound_test_page(self, request):
         import task_data
         import audio_library
@@ -226,10 +238,16 @@ class WebFrontend(PluginBase):
             ("vx_30s_landing_window",  "30s landing window"),
         ]
         tasks = [(k, v['name']) for k, v in task_data.f3k_task_timing_data.items()]
+        loaded_lang = getattr(audio_library, 'loaded_language', 'en')
+        loaded_voice = getattr(audio_library, 'loaded_voice', '')
+        voices = self._scan_voices(loaded_lang)
         context = {
             'numbers': numbers,
             'language_phrases': language_phrases,
             'tasks': tasks,
+            'voices': voices,
+            'default_voice': loaded_voice,
+            'loaded_language': loaded_lang,
         }
         return aiohttp_jinja2.render_template('sound_test.html', request, context=context)
 
@@ -238,15 +256,34 @@ class WebFrontend(PluginBase):
 
         VALID_EFFECTS = {'start_signal', 'countdown_beeps', 'countdown_beeps_3s', 'countdown_beeps_end'}
         VALID_UNITS   = {'second', 'seconds', 'minute', 'minutes'}
+        UNIT_FILE_MAP = {'second': 'second0', 'seconds': 'second1', 'minute': 'minute0', 'minutes': 'minute1'}
 
         try:
             data = await request.json()
             category = data.get('category', '')
             key      = data.get('key', '')
+            voice    = data.get('voice', None)
         except Exception:
             return web.Response(status=400, text='Invalid JSON')
 
+        # Validate voice against server-scanned allowlist to prevent path traversal
+        loaded_lang = getattr(audio_library, 'loaded_language', 'en')
+        if voice is not None:
+            valid_voices = self._scan_voices(loaded_lang)
+            if voice not in valid_voices:
+                return web.Response(status=400, text=f'Unknown voice: {voice}')
+
+        # Helper: load a wav from the selected voice dir and play it
+        def play_voice_file(rel_path):
+            from pathlib import Path
+            p = Path('assets/sounds') / loaded_lang / voice / rel_path
+            if not p.is_file():
+                raise FileNotFoundError(str(p))
+            sound = pygame.mixer.Sound(str(p))
+            self.events.trigger('audioplayer.play_audio', sound)
+
         if category == 'effect':
+            # Effects are not voice-specific — always use the globally loaded audio_library
             if key not in VALID_EFFECTS:
                 return web.Response(status=400, text=f'Unknown effect: {key}')
             audio_obj = getattr(audio_library, f'effect_{key}', None)
@@ -259,29 +296,53 @@ class WebFrontend(PluginBase):
                 n = int(key)
             except (ValueError, TypeError):
                 return web.Response(status=400, text='Key must be an integer')
-            if n not in audio_library.time_sounds:
-                return web.Response(status=400, text=f'No sound for number: {n}')
-            self.events.trigger('audioplayer.play_integer', n)
+            if voice:
+                try:
+                    play_voice_file(f'{n:04d}.wav')
+                except FileNotFoundError as e:
+                    return web.Response(status=404, text=f'Sound file not found: {e}')
+            else:
+                if n not in audio_library.time_sounds:
+                    return web.Response(status=400, text=f'No sound for number: {n}')
+                self.events.trigger('audioplayer.play_integer', n)
 
         elif category == 'unit':
             if key not in VALID_UNITS:
                 return web.Response(status=400, text=f'Unknown unit: {key}')
-            self.events.trigger(f'audioplayer.play_literally_{key}')
+            if voice:
+                try:
+                    play_voice_file(f'{UNIT_FILE_MAP[key]}.wav')
+                except FileNotFoundError as e:
+                    return web.Response(status=404, text=f'Sound file not found: {e}')
+            else:
+                self.events.trigger(f'audioplayer.play_literally_{key}')
 
         elif category == 'language':
-            if key not in audio_library.language_audio:
-                return web.Response(status=400, text=f'Unknown language key: {key}')
-            self.events.trigger('audioplayer.play_audio', audio_library.language_audio[key])
+            if voice:
+                try:
+                    play_voice_file(f'{key}.wav')
+                except FileNotFoundError as e:
+                    return web.Response(status=404, text=f'Sound file not found: {e}')
+            else:
+                if key not in audio_library.language_audio:
+                    return web.Response(status=400, text=f'Unknown language key: {key}')
+                self.events.trigger('audioplayer.play_audio', audio_library.language_audio[key])
 
         elif category == 'task':
-            if key not in audio_library.task_audio:
-                return web.Response(status=400, text=f'Unknown task key: {key}')
-            self.events.trigger('audioplayer.play_audio', audio_library.task_audio[key])
+            if voice:
+                try:
+                    play_voice_file(f'{key}.wav')
+                except FileNotFoundError as e:
+                    return web.Response(status=404, text=f'Sound file not found: {e}')
+            else:
+                if key not in audio_library.task_audio:
+                    return web.Response(status=400, text=f'Unknown task key: {key}')
+                self.events.trigger('audioplayer.play_audio', audio_library.task_audio[key])
 
         else:
             return web.Response(status=400, text=f'Unknown category: {category}')
 
-        self.logger.info(f'play-sound: {category}/{key}')
+        self.logger.info(f'play-sound: {category}/{key} voice={voice}')
         return web.Response(status=200, text='OK')
 
     async def handle_goto(self, request):

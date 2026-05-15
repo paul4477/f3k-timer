@@ -23,9 +23,17 @@
 <body class="font-monospace">
   <div class="container-lg py-3">
 
-    <div class="d-flex align-items-center mb-3 gap-3">
+    <div class="d-flex align-items-center mb-3 gap-3 flex-wrap">
       <a href="/" class="btn btn-secondary">&larr; Back</a>
       <h1 class="h3 mb-0">Sound Test</h1>
+      <div class="d-flex align-items-center gap-2">
+        <label for="voiceSelect" class="form-label mb-0 text-muted small">Voice:</label>
+        <select id="voiceSelect" class="form-select form-select-sm" style="width:auto">
+          {% for v in voices %}
+          <option value="{{ v }}"{% if v == default_voice %} selected{% endif %}>{{ v }}{% if v == default_voice %} (app voice){% endif %}</option>
+          {% endfor %}
+        </select>
+      </div>
       <span id="status" class="text-muted small"></span>
     </div>
 
@@ -84,12 +92,13 @@
   <script>
     async function play(btn, category, key) {
       const status = document.getElementById('status');
-      status.textContent = `Playing: ${category} / ${key}`;
+      const voice = document.getElementById('voiceSelect').value;
+      status.textContent = `Playing: ${category} / ${key} [${voice}]`;
       try {
         const resp = await fetch('/play-sound', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ category, key })
+          body: JSON.stringify({ category, key, voice })
         });
         if (resp.ok) {
           btn.classList.remove('flash-err');
