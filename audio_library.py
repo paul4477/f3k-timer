@@ -95,13 +95,19 @@ def load_audio_library(main_config):
 
   effect_start_signal = pygame.mixer.Sound('assets/sounds/start_signal.wav')
 
-  #effect_countdown_beeps = pygame.mixer.Sound('assets/sounds/4321_normal.wav')
-  #effect_countdown_beeps_3s = pygame.mixer.Sound('assets/sounds/4321_3s.wav')
-  #effect_countdown_beeps_end = pygame.mixer.Sound('assets/sounds/4321_short_down.wav')
   
-  effect_countdown_beeps = pygame.mixer.Sound('assets/sounds/21_normal.wav')
-  effect_countdown_beeps_3s = pygame.mixer.Sound('assets/sounds/21_3s.wav')
-  effect_countdown_beeps_end = pygame.mixer.Sound('assets/sounds/21_short_down.wav')
+ 
+  if main_config.get('COUNTDOWN_TONES', True):
+    ## Beeps from "2"
+    effect_countdown_beeps = pygame.mixer.Sound('assets/sounds/21_normal.wav')
+    effect_countdown_beeps_3s = pygame.mixer.Sound('assets/sounds/21_3s.wav')
+    effect_countdown_beeps_end = pygame.mixer.Sound('assets/sounds/21_short_down.wav')
+  else:
+    ## Full countdown from 0
+    effect_countdown_beeps = pygame.mixer.Sound('assets/sounds/0_normal.wav')
+    effect_countdown_beeps_3s = pygame.mixer.Sound('assets/sounds/0_3s.wav')
+    effect_countdown_beeps_end = pygame.mixer.Sound('assets/sounds/0_short_down.wav')
+
   global time_sounds
   time_sounds ={0: effect_0,
                   1: effect_1,

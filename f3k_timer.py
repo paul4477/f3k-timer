@@ -60,6 +60,10 @@ async def main():
             logger.error(f"Invalid configuration section: {config_section}")
             continue
     
+    # Set BEEPS_START_AT in competition module from config before any sections are constructed
+    import f3k_cl_competition
+    f3k_cl_competition.BEEPS_START_AT = 2 if main_config.get('COUNTDOWN_TONES', True) else 0
+
     # Initialise audio library
     import audio_library
     audio_library.load_audio_library(main_config)
