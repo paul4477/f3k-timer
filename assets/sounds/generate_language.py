@@ -34,9 +34,11 @@ def generate_sound_file(filename, text_to_speak, voice):
   print(filepath+" <== "+text_to_speak)
   if not os.path.exists(full_dir):
     os.makedirs(full_dir, exist_ok=True)
-  with wave.open(filepath, "wb") as wav_file:
-    voice.synthesize_wav(text_to_speak, wav_file, syn_config=syn_config)
-  trim_leading_silence(filepath)
+  # Only generate if the file doesn't already exist or is zero bytes, to save time when regenerating after edits
+  if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
+    with wave.open(filepath, "wb") as wav_file:
+      voice.synthesize_wav(text_to_speak, wav_file, syn_config=syn_config)
+    trim_leading_silence(filepath)
 
 other_announcements = {
   'minute0': 'minute',
