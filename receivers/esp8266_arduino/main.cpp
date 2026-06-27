@@ -21,8 +21,35 @@
 #include <ESP8266WiFi.h>
 #include <espnow.h>
 #include <ArduinoJson.h>
-extern "C" {
-  #include "user_interface.h"  // for wifi_set_channel()
+extern "C"
+{
+#include "user_interface.h" // for wifi_set_channel()
+}
+
+// ---------------------------------------------------------------------------
+// Pilot cache — populated from p_def messages
+// ---------------------------------------------------------------------------
+
+#define MAX_PILOTS 8
+
+struct PilotEntry
+{
+  char id[16];
+  char name[32];
+};
+
+static PilotEntry s_pilots[MAX_PILOTS];
+static int s_pilotCount = 0;
+
+/** Return the cached display name for a pilot ID, or the ID itself as fallback. */
+static const char *pilotName(const char *id)
+{
+  for (int i = 0; i < s_pilotCount; i++)
+  {
+    if (strcmp(s_pilots[i].id, id) == 0)
+      return s_pilots[i].name;
+  }
+  return id;
 }
 
 // ---------------------------------------------------------------------------
@@ -63,105 +90,135 @@ void handlePilotDef(JsonObjectConst data);
  */
 void handlePilotList(JsonArrayConst data);
 
-
 // ---------------------------------------------------------------------------
 // ESP-NOW receive callback
 // ---------------------------------------------------------------------------
 
-void onDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len) {
-    // Packets are always < 250 bytes (asserted by the plugin).
-    StaticJsonDocument<512> doc;
+void onDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len)
+{
+  // Packets are always < 250 bytes (asserted by the plugin).
+  StaticJsonDocument<512> doc;
 
-    DeserializationError err = deserializeJson(doc, incomingData, len);
-    if (err) {
-        Serial.print(F("[ESPNow] JSON parse error: "));
-        Serial.println(err.c_str());
-        return;
-    }
+  DeserializationError err = deserializeJson(doc, incomingData, len);
+  if (err)
+  {
+    Serial.print(F("[ESPNow] JSON parse error: "));
+    Serial.println(err.c_str());
+    return;
+  }
 
-    const char *msgType = doc["t"] | "";
-    JsonVariant data    = doc["d"];
+  const char *msgType = doc["t"] | "";
+  JsonVariant data = doc["d"];
 
-    if (strcmp(msgType, "time") == 0) {
-        handleTime(data.as<JsonObjectConst>());
-    } else if (strcmp(msgType, "p_def") == 0) {
-        handlePilotDef(data.as<JsonObjectConst>());
-    } else if (strcmp(msgType, "p_list") == 0) {
-        handlePilotList(data.as<JsonArrayConst>());
-    } else {
-        Serial.print(F("[ESPNow] Unknown message type: "));
-        Serial.println(msgType);
-    }
+  if (strcmp(msgType, "time") == 0)
+  {
+    handleTime(data.as<JsonObjectConst>());
+  }
+  else if (strcmp(msgType, "p_def") == 0)
+  {
+    handlePilotDef(data.as<JsonObjectConst>());
+  }
+  else if (strcmp(msgType, "p_list") == 0)
+  {
+    handlePilotList(data.as<JsonArrayConst>());
+  }
+  else
+  {
+    Serial.print(F("[ESPNow] Unknown message type: "));
+    Serial.println(msgType);
+  }
 }
-
 
 // ---------------------------------------------------------------------------
 // Stub handlers — implement your display / storage logic here
 // ---------------------------------------------------------------------------
 
-void handleTime(JsonObjectConst data) {
-    int        slotTime  = data["slot_time"] | 0;
-    bool       noFly     = data["no_fly"]    | false;
-    const char *timeStr  = data["time_s"]    | "--:--";
-    int        roundNum  = data["r_num"]     | 0;
-    const char *groupLet = data["g_let"]     | "-";
-    int        flightNum = data["f_num"]     | 1;
-    const char *sect     = data["sect"]      | "";
-    const char *taskName = data["task_name"] | "";
+void handleTime(JsonObjectConst data)
+{
+  int slotTime = data["slot_time"] | 0;
+  bool noFly = data["no_fly"] | false;
+  const char *timeStr = data["time_s"] | "--:--";
+  int roundNum = data["r_num"] | 0;
+  const char *groupLet = data["g_let"] | "-";
+  int flightNum = data["f_num"] | 1;
+  const char *sect = data["sect"] | "";
+  const char *taskName = data["task_name"] | "";
 
-    // TODO: update display, drive outputs, etc.
-    Serial.printf("[time] %s  R%d G%s F%d  no_fly=%d  sect=%s\n",
-                  timeStr, roundNum, groupLet, flightNum, noFly, sect);
+  // TODO: update display, drive outputs, etc.
+  Serial.printf("[time] %s  R%d G%s F%d  no_fly=%d  sect=%s\n",
+                timeStr, roundNum, groupLet, flightNum, noFly, sect);
 }
 
-void handlePilotDef(JsonObjectConst data) {
-    const char *id   = data["id"]   | "";
-    const char *name = data["name"] | "";
+void handlePilotDef(JsonObjectConst data)
+{
+  const char *id = data["id"] | "";
+  const char *name = data["name"] | "";
 
-    // TODO: store pilot info (e.g. in a map keyed by id)
-    Serial.printf("[p_def] id=%s  name=%s\n", id, name);
-}
+  Serial.printf("[p_def] id=%s  name=%s\n", id, name);
 
-void handlePilotList(JsonArrayConst data) {
-    // data is an ordered array of pilot ID strings for the current group
-    Serial.print(F("[p_list] pilots: "));
-    for (JsonVariantConst v : data) {
-        Serial.print(v.as<const char *>());
-        Serial.print(' ');
+  // Update existing cache entry or append a new one
+  for (int i = 0; i < s_pilotCount; i++)
+  {
+    if (strcmp(s_pilots[i].id, id) == 0)
+    {
+      strncpy(s_pilots[i].name, name, sizeof(s_pilots[i].name) - 1);
+      return;
     }
-    Serial.println();
-
-    // TODO: store ordered list for display
+  }
+  if (s_pilotCount < MAX_PILOTS)
+  {
+    strncpy(s_pilots[s_pilotCount].id, id, sizeof(s_pilots[0].id) - 1);
+    strncpy(s_pilots[s_pilotCount].name, name, sizeof(s_pilots[0].name) - 1);
+    s_pilotCount++;
+  }
 }
 
+void handlePilotList(JsonArrayConst data)
+{
+  // data is an ordered array of pilot IDs for the current group.
+  // pilotName() resolves each ID to the name received in earlier p_def messages.
+  Serial.print(F("[p_list] group order: "));
+  int pos = 1;
+  for (JsonVariantConst v : data)
+  {
+    const char *id = v.as<const char *>();
+    Serial.printf("%d. %s  ", pos++, pilotName(id));
+  }
+  Serial.println();
+
+  // TODO: store ordered list and render to display
+}
 
 // ---------------------------------------------------------------------------
 // Arduino lifecycle
 // ---------------------------------------------------------------------------
 
-void setup() {
-    Serial.begin(115200);
-    Serial.println(F("\n[F3K] ESP8266 ESP-NOW receiver starting"));
+void setup()
+{
+  Serial.begin(115200);
+  Serial.println(F("\n[F3K] ESP8266 ESP-NOW receiver starting"));
 
-    // ESP-NOW requires Wi-Fi in station mode; no AP association needed.
-    // Channel must match the sender (f3k-timer broadcasts on channel 4).
-    WiFi.mode(WIFI_STA);
-    WiFi.disconnect();
-    wifi_set_channel(4);
+  // ESP-NOW requires Wi-Fi in station mode; no AP association needed.
+  // Channel must match the sender (f3k-timer broadcasts on channel 4).
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  wifi_set_channel(4);
 
-    if (esp_now_init() != 0) {
-        Serial.println(F("[ESPNow] Initialisation failed"));
-        return;
-    }
+  if (esp_now_init() != 0)
+  {
+    Serial.println(F("[ESPNow] Initialisation failed"));
+    return;
+  }
 
-    esp_now_set_self_role(ESP_NOW_ROLE_SLAVE);
-    esp_now_register_recv_cb(onDataRecv);
+  esp_now_set_self_role(ESP_NOW_ROLE_SLAVE);
+  esp_now_register_recv_cb(onDataRecv);
 
-    Serial.print(F("[ESPNow] Receiver ready. MAC: "));
-    Serial.println(WiFi.macAddress());
+  Serial.print(F("[ESPNow] Receiver ready. MAC: "));
+  Serial.println(WiFi.macAddress());
 }
 
-void loop() {
-    // ESP-NOW receive callbacks are delivered on the Arduino background task;
-    // add any periodic work (display refresh, etc.) here.
+void loop()
+{
+  // ESP-NOW receive callbacks are delivered on the Arduino background task;
+  // add any periodic work (display refresh, etc.) here.
 }

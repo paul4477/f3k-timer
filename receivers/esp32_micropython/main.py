@@ -22,6 +22,15 @@ import ujson
 
 
 # ---------------------------------------------------------------------------
+# Pilot cache — populated from p_def messages
+# ---------------------------------------------------------------------------
+
+# Maps pilot_id (str) -> display name (str).
+# Populated by handle_pilot_def; consumed by handle_pilot_list.
+_pilots: dict = {}
+
+
+# ---------------------------------------------------------------------------
 # Stub handlers — implement your display / storage logic here
 # ---------------------------------------------------------------------------
 
@@ -55,7 +64,7 @@ def handle_pilot_def(data: dict) -> None:
             id    (str)  Pilot ID (matches IDs in p_list messages).
             name  (str)  Full display name, e.g. "Jane Smith".
     """
-    # TODO: store pilot info, e.g. pilots[data["id"]] = data["name"]
+    _pilots[data.get("id", "")] = data.get("name", "")
     print("[p_def] id={id}  name={name}".format(**data))
 
 
@@ -67,8 +76,13 @@ def handle_pilot_list(data: list) -> None:
     Args:
         data: list of pilot ID strings for the current group, in flying order.
     """
-    # TODO: store ordered list for display
-    print("[p_list] pilots:", data)
+    # Resolve each pilot ID to its cached display name (falls back to the raw
+    # ID if the corresponding p_def message has not yet been received).
+    print("[p_list] group order:")
+    for i, pilot_id in enumerate(data, 1):
+        print(f"  {i}. {_pilots.get(pilot_id, pilot_id)}")
+
+    # TODO: store ordered list and render to display
 
 
 # ---------------------------------------------------------------------------

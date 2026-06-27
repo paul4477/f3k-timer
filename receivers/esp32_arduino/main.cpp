@@ -30,6 +30,32 @@
 #include <ArduinoJson.h>
 
 // ---------------------------------------------------------------------------
+// Pilot cache — populated from p_def messages
+// ---------------------------------------------------------------------------
+
+#define MAX_PILOTS 8
+
+struct PilotEntry
+{
+  char id[16];
+  char name[32];
+};
+
+static PilotEntry s_pilots[MAX_PILOTS];
+static int s_pilotCount = 0;
+
+/** Return the cached display name for a pilot ID, or the ID itself as fallback. */
+static const char *pilotName(const char *id)
+{
+  for (int i = 0; i < s_pilotCount; i++)
+  {
+    if (strcmp(s_pilots[i].id, id) == 0)
+      return s_pilots[i].name;
+  }
+  return id;
+}
+
+// ---------------------------------------------------------------------------
 // Forward declarations
 // ---------------------------------------------------------------------------
 
@@ -131,22 +157,39 @@ void handlePilotDef(JsonObjectConst data)
   const char *id = data["id"] | "";
   const char *name = data["name"] | "";
 
-  // TODO: store pilot info (e.g. in a map keyed by id)
   Serial.printf("[p_def] id=%s  name=%s\n", id, name);
+
+  // Update existing cache entry or append a new one
+  for (int i = 0; i < s_pilotCount; i++)
+  {
+    if (strcmp(s_pilots[i].id, id) == 0)
+    {
+      strncpy(s_pilots[i].name, name, sizeof(s_pilots[i].name) - 1);
+      return;
+    }
+  }
+  if (s_pilotCount < MAX_PILOTS)
+  {
+    strncpy(s_pilots[s_pilotCount].id, id, sizeof(s_pilots[0].id) - 1);
+    strncpy(s_pilots[s_pilotCount].name, name, sizeof(s_pilots[0].name) - 1);
+    s_pilotCount++;
+  }
 }
 
 void handlePilotList(JsonArrayConst data)
 {
-  // data is an ordered array of pilot ID strings for the current group
-  Serial.print(F("[p_list] pilots: "));
+  // data is an ordered array of pilot IDs for the current group.
+  // pilotName() resolves each ID to the name received in earlier p_def messages.
+  Serial.print(F("[p_list] group order: "));
+  int pos = 1;
   for (JsonVariantConst v : data)
   {
-    Serial.print(v.as<const char *>());
-    Serial.print(' ');
+    const char *id = v.as<const char *>();
+    Serial.printf("%d. %s  ", pos++, pilotName(id));
   }
   Serial.println();
 
-  // TODO: store ordered list for display
+  // TODO: store ordered list and render to display
 }
 
 // ---------------------------------------------------------------------------
