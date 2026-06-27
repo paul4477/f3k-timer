@@ -123,7 +123,7 @@ This is a fully functional example rather than a stub — it drives the built-in
 | --------------------------- | ------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------- | ------------------------------------------------ |
 | Wi-Fi header                | `<ESP8266WiFi.h>`                           | `<WiFi.h>`                                       | `network` module                                         | via `<M5StickCPlus2.h>`                          |
 | ESP-NOW header              | `<espnow.h>`                                | `<esp_now.h>` + `<esp_wifi.h>`                   | `espnow` module                                          | `<esp_now.h>` + `<esp_wifi.h>`                   |
-| Channel setting             | `wifi_set_channel(4)` (SDK)                 | `esp_wifi_set_channel(4, WIFI_SECOND_CHAN_NONE)`  | `wlan.config(channel=4)`                                 | `esp_wifi_set_channel(4, WIFI_SECOND_CHAN_NONE)`  |
+| Channel setting             | `wifi_set_channel(4)` (SDK)                 | `esp_wifi_set_channel(4, WIFI_SECOND_CHAN_NONE)` | `wlan.config(channel=4)`                                 | `esp_wifi_set_channel(4, WIFI_SECOND_CHAN_NONE)` |
 | Role setup                  | `esp_now_set_self_role(ESP_NOW_ROLE_SLAVE)` | Not needed                                       | Not needed                                               | Not needed                                       |
 | Callback style              | `esp_now_register_recv_cb()`                | `esp_now_register_recv_cb()`                     | `e.irq()`                                                | `esp_now_register_recv_cb()`                     |
 | Broadcast peer registration | Not needed                                  | Not needed                                       | **Required** — `e.add_peer(b'\xff\xff\xff\xff\xff\xff')` | Not needed                                       |
@@ -160,7 +160,7 @@ All packets are JSON objects of the form:
 | ---------- | -------------------------------------------------- | ------------------------------ |
 | `"time"`   | Every plugin tick (rate-limited, ~6 Hz by default) | Timer state object (see below) |
 | `"p_def"`  | Prep section start and every ~60 s                 | Single pilot definition object |
-| `"p_list"` | Prep section start, ~5 s after `p_def` messages    | Array of pilot ID strings      |
+| `"p_list"` | Prep section start, ~5 s after `p_def` messages    | Array of pilot IDs (integers)  |
 
 Maximum packet size is 250 bytes (enforced by the plugin).
 
@@ -181,9 +181,9 @@ Maximum packet size is 250 bytes (enforced by the plugin).
 
 | Field  | Type   | Description                            |
 | ------ | ------ | -------------------------------------- |
-| `id`   | string | Pilot ID (matches entries in `p_list`) |
+| `id`   | int    | Pilot ID (matches entries in `p_list`) |
 | `name` | string | Full display name                      |
 
 ### `"p_list"` data
 
-A JSON array of pilot ID strings in flying order for the current group.
+A JSON array of pilot IDs (integers) in flying order for the current group.

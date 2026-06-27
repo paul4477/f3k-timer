@@ -34,22 +34,24 @@ extern "C"
 
 struct PilotEntry
 {
-  char id[16];
+  int id;
   char name[32];
 };
 
 static PilotEntry s_pilots[MAX_PILOTS];
 static int s_pilotCount = 0;
 
-/** Return the cached display name for a pilot ID, or the ID itself as fallback. */
-static const char *pilotName(const char *id)
+/** Return the cached display name for a pilot ID, or the numeric ID as fallback. */
+static const char *pilotName(int id)
 {
   for (int i = 0; i < s_pilotCount; i++)
   {
-    if (strcmp(s_pilots[i].id, id) == 0)
+    if (s_pilots[i].id == id)
       return s_pilots[i].name;
   }
-  return id;
+  static char fallback[16];
+  snprintf(fallback, sizeof(fallback), "%d", id);
+  return fallback;
 }
 
 // ---------------------------------------------------------------------------
@@ -136,6 +138,13 @@ void onDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len)
 void handleTime(JsonObjectConst data)
 {
   int slotTime = data["slot_time"] | 0;
+
+  // Discard messages where slot_time hasn't changed — display is 1-second resolution.
+  static int lastSlotTime = -1;
+  if (slotTime == lastSlotTime)
+    return;
+  lastSlotTime = slotTime;
+
   bool noFly = data["no_fly"] | false;
   const char *timeStr = data["time_s"] | "--:--";
   int roundNum = data["r_num"] | 0;
@@ -151,15 +160,15 @@ void handleTime(JsonObjectConst data)
 
 void handlePilotDef(JsonObjectConst data)
 {
-  const char *id = data["id"] | "";
+  int id = data["id"] | 0;
   const char *name = data["name"] | "";
 
-  Serial.printf("[p_def] id=%s  name=%s\n", id, name);
+  Serial.printf("[p_def] id=%d  name=%s\n", id, name);
 
   // Update existing cache entry or append a new one
   for (int i = 0; i < s_pilotCount; i++)
   {
-    if (strcmp(s_pilots[i].id, id) == 0)
+    if (s_pilots[i].id == id)
     {
       strncpy(s_pilots[i].name, name, sizeof(s_pilots[i].name) - 1);
       return;
@@ -167,7 +176,7 @@ void handlePilotDef(JsonObjectConst data)
   }
   if (s_pilotCount < MAX_PILOTS)
   {
-    strncpy(s_pilots[s_pilotCount].id, id, sizeof(s_pilots[0].id) - 1);
+    s_pilots[s_pilotCount].id = id;
     strncpy(s_pilots[s_pilotCount].name, name, sizeof(s_pilots[0].name) - 1);
     s_pilotCount++;
   }
@@ -175,13 +184,13 @@ void handlePilotDef(JsonObjectConst data)
 
 void handlePilotList(JsonArrayConst data)
 {
-  // data is an ordered array of pilot IDs for the current group.
+  // data is an ordered array of pilot IDs (integers) for the current group.
   // pilotName() resolves each ID to the name received in earlier p_def messages.
   Serial.print(F("[p_list] group order: "));
   int pos = 1;
   for (JsonVariantConst v : data)
   {
-    const char *id = v.as<const char *>();
+    int id = v.as<int>();
     Serial.printf("%d. %s  ", pos++, pilotName(id));
   }
   Serial.println();

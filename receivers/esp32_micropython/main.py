@@ -34,6 +34,10 @@ _pilots: dict = {}
 # Stub handlers — implement your display / storage logic here
 # ---------------------------------------------------------------------------
 
+# Last seen slot_time — used to discard duplicate time messages at ~6 Hz.
+_last_slot_time: int = -1
+
+
 def handle_time(data: dict) -> None:
     """Handle a 'time' message (fired every tick, rate-limited by plugin).
 
@@ -48,6 +52,13 @@ def handle_time(data: dict) -> None:
             sect       (str)   Section description, e.g. "Working Time".
             task_name  (str)   Task name, e.g. "Task F".
     """
+    global _last_slot_time
+    slot_time = data.get("slot_time", -1)
+    # Discard messages where slot_time hasn't changed — display is 1-second resolution.
+    if slot_time == _last_slot_time:
+        return
+    _last_slot_time = slot_time
+
     # TODO: update display, drive outputs, etc.
     print("[time]", data.get("time_s"), "| round:", data.get("r_num"),
           "group:", data.get("g_let"), "no_fly:", data.get("no_fly"),
