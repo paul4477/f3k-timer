@@ -55,7 +55,7 @@ static constexpr int SCR_H = 135;
 // Pilot cache — populated from p_def / p_list messages
 // ---------------------------------------------------------------------------
 
-#define MAX_PILOTS 8
+#define MAX_PILOTS 32
 
 struct PilotEntry
 {
@@ -175,13 +175,23 @@ static void drawPrepScreen()
   M5.Lcd.setCursor(2, 2);
   M5.Lcd.printf("PREP  R%d G%s", s_roundNum, s_groupLet);
 
-  // Pilot roster — one row per pilot, 14 px apart at size 1
-  M5.Lcd.setTextSize(1);
-  M5.Lcd.setTextColor(WHITE, BLACK);
-  for (int i = 0; i < s_groupSize && i < MAX_PILOTS; i++)
+  // Pilot roster — only rendered after a p_list has been received for this prep section
+  if (s_groupSize > 0)
   {
-    M5.Lcd.setCursor(2, 26 + i * 13);
-    M5.Lcd.printf("%d. %s", i + 1, pilotName(s_groupOrder[i]));
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(WHITE, BLACK);
+    for (int i = 0; i < s_groupSize && i < MAX_PILOTS; i++)
+    {
+      M5.Lcd.setCursor(2, 26 + i * 13);
+      M5.Lcd.printf("%d. %s", i + 1, pilotName(s_groupOrder[i]));
+    }
+  }
+  else
+  {
+    M5.Lcd.setTextSize(1);
+    M5.Lcd.setTextColor(DARKGREY, BLACK);
+    M5.Lcd.setCursor(2, 50);
+    M5.Lcd.print("Waiting for pilot list...");
   }
 
   // Countdown in bottom-right corner (size 3 = 18 px/char; 5 chars × 18 = 90 px; 240-90-4 = 146)
@@ -230,6 +240,17 @@ void handleTime(JsonObjectConst data)
   bool noFlyChanged = (noFly != s_noFly);
   bool nowInPrep = (strstr(sect, "rep") != nullptr); // "Prep"
 
+  // Reset pilot cache on group change — the plugin sends a full p_def
+  // broadcast for every pilot in the new group during its prep section.
+  // s_groupLet still holds the previous group letter at this point.
+  if (strcmp(groupLet, s_groupLet) != 0)
+    s_pilotCount = 0;
+
+  // Clear stale roster whenever the section changes; a fresh p_list is needed
+  // before the roster will be displayed for the new prep section.
+  if (sectionChanged)
+    s_groupSize = 0;
+
   strncpy(s_timeStr, timeStr, sizeof(s_timeStr) - 1);
   strncpy(s_sect, sect, sizeof(s_sect) - 1);
   strncpy(s_taskName, taskName, sizeof(s_taskName) - 1);
@@ -277,6 +298,17 @@ void handlePilotDef(JsonObjectConst data)
     s_pilots[s_pilotCount].id = id;
     strncpy(s_pilots[s_pilotCount].name, name, sizeof(s_pilots[0].name) - 1);
     s_pilotCount++;
+  }
+
+  // If this pilot is already in the current group order, the roster may be
+  // showing their raw ID — trigger a redraw so the name appears.
+  for (int i = 0; i < s_groupSize; i++)
+  {
+    if (s_groupOrder[i] == id)
+    {
+      s_needRedraw = true;
+      break;
+    }
   }
 }
 

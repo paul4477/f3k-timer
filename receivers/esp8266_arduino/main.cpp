@@ -30,7 +30,7 @@ extern "C"
 // Pilot cache — populated from p_def messages
 // ---------------------------------------------------------------------------
 
-#define MAX_PILOTS 8
+#define MAX_PILOTS 32
 
 struct PilotEntry
 {
@@ -152,6 +152,15 @@ void handleTime(JsonObjectConst data)
   int flightNum = data["f_num"] | 1;
   const char *sect = data["sect"] | "";
   const char *taskName = data["task_name"] | "";
+
+  // Reset pilot cache on group change — the plugin sends a full p_def
+  // broadcast for every pilot in the new group during its prep section.
+  static char lastGroupLet[4] = "";
+  if (strcmp(groupLet, lastGroupLet) != 0)
+  {
+    strncpy(lastGroupLet, groupLet, sizeof(lastGroupLet) - 1);
+    s_pilotCount = 0;
+  }
 
   // TODO: update display, drive outputs, etc.
   Serial.printf("[time] %s  R%d G%s F%d  no_fly=%d  sect=%s\n",

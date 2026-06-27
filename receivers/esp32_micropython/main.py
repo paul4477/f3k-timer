@@ -25,9 +25,11 @@ import ujson
 # Pilot cache — populated from p_def messages
 # ---------------------------------------------------------------------------
 
-# Maps pilot_id (str) -> display name (str).
+# Maps pilot_id (int) -> display name (str).
 # Populated by handle_pilot_def; consumed by handle_pilot_list.
+# Cleared on each group change so stale data from previous groups is removed.
 _pilots: dict = {}
+_last_group_let: str = ""
 
 
 # ---------------------------------------------------------------------------
@@ -52,12 +54,19 @@ def handle_time(data: dict) -> None:
             sect       (str)   Section description, e.g. "Working Time".
             task_name  (str)   Task name, e.g. "Task F".
     """
-    global _last_slot_time
+    global _last_slot_time, _last_group_let, _pilots
     slot_time = data.get("slot_time", -1)
     # Discard messages where slot_time hasn't changed — display is 1-second resolution.
     if slot_time == _last_slot_time:
         return
     _last_slot_time = slot_time
+
+    # Reset pilot cache on group change — the plugin sends a full p_def
+    # broadcast for every pilot in the new group during its prep section.
+    g_let = data.get("g_let", "-")
+    if g_let != _last_group_let:
+        _last_group_let = g_let
+        _pilots = {}
 
     # TODO: update display, drive outputs, etc.
     print("[time]", data.get("time_s"), "| round:", data.get("r_num"),
