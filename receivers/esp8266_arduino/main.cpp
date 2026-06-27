@@ -126,8 +126,8 @@ void onDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len)
   }
   else
   {
-    Serial.print(F("[ESPNow] Unknown message type: "));
-    Serial.println(msgType);
+    Serial.printf("[ESPNow] Unknown message type: %s  raw (%d bytes): %.*s\n",
+                  msgType, len, len, (const char *)incomingData);
   }
 }
 

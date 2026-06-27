@@ -129,8 +129,8 @@ void onDataRecv(const esp_now_recv_info_t *recv_info, const uint8_t *incomingDat
   }
   else
   {
-    Serial.print(F("[ESPNow] Unknown message type: "));
-    Serial.println(reinterpret_cast<const char *>(incomingData));
+    Serial.printf("[ESPNow] Unknown message type: %s  raw (%d bytes): %.*s\n",
+                  msgType, len, len, (const char *)incomingData);
   }
 }
 
