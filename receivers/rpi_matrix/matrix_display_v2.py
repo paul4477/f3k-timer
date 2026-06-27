@@ -503,6 +503,7 @@ class SerialReader:
         """
         if not self._port:
             return None
+        raw = b""
         try:
             raw = self._port.readline()
         except serial.SerialException as exc:
@@ -565,6 +566,9 @@ class MatrixDisplayApp:
         self._last_round_num: str = ""
         self._last_group_letter: str = ""
         self._last_data_time: float = 0.0
+
+        # Deduplication: (section, slot_time) pair of the last rendered frame
+        self._last_rendered_key: Optional[tuple] = None
 
         # Cached renderer references for states not keyed by section name
         self._boot_renderer: Optional[BaseRenderer] = None
@@ -657,14 +661,22 @@ class MatrixDisplayApp:
         self._last_round_num = timing.round_num
         self._last_group_letter = timing.group_letter
 
+        render_key = (timing.section, timing.slot_time)
+        if render_key == self._last_rendered_key:
+            self._log.debug("Skipping duplicate frame: section='%s' slot_time=%d",
+                            timing.section, timing.slot_time)
+            return
+
         renderer = self._router.get(timing.section)
         if renderer is None:
             self._log.warning("No renderer for section '%s'; skipping render",
                               timing.section)
             return
 
-        self._log.debug("Rendering section '%s'", timing.section)
+        self._log.debug("Rendering section '%s' slot_time=%d",
+                        timing.section, timing.slot_time)
         self._render_and_swap(renderer, timing)
+        self._last_rendered_key = render_key
 
     def _handle_pilot_def(self, payload: dict) -> None:
         try:
