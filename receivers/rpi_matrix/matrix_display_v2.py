@@ -100,8 +100,10 @@ class DisplayConfig:
     pilot_list_start_y: int = 15
     pilot_list_line_height: int = 7
     boot_title_x: int = 10
-    boot_title_y: int = 32
+    boot_title_y: int = 12
     boot_subtitle_y: int = 8
+    display_width: int = 96              # total panel width  = cols × chain_length
+    display_height: int = 48             # total panel height = rows × parallel
 
 
 # ---------------------------------------------------------------------------
@@ -136,10 +138,16 @@ class TimingData:
         """
         raw_task = data.get("task_name", "")
         task_name = raw_task[13:] if len(raw_task) > 13 else raw_task
+        raw_slot = data.get("slot_time", 0)
+        try:
+            slot_time = int(raw_slot)
+        except (ValueError, TypeError):
+            slot_time = 0   # expected for placeholder values like "--:--"
+
         return cls(
             section=data["sect"],
             time_s=data["time_s"],
-            slot_time=int(data["slot_time"]),
+            slot_time=slot_time,
             no_fly=bool(data.get("no_fly", False)),
             round_num=str(data.get("r_num", "")),
             group_letter=str(data.get("g_let", "")),
@@ -310,6 +318,10 @@ class BaseRenderer(ABC):
     def render(self, canvas, data) -> None:
         """Draw this section's layout onto *canvas* using *data*."""
 
+    def needs_render(self) -> bool:
+        """Return True if this renderer needs immediate re-rendering for animation."""
+        return False
+
     # ------------------------------------------------------------------
     # Shared drawing helpers used by multiple section renderers
     # ------------------------------------------------------------------
@@ -345,11 +357,36 @@ class BaseRenderer(ABC):
     def _round_group_label(data: TimingData) -> str:
         return f"R:{data.round_num} Gr:{data.group_letter}"
 
+    _KR_SWEEP_SECS: float = 1.5  # duration of one left-to-right knight-rider pass
+
+    def _draw_knight_rider(self, canvas) -> None:
+        """Draw a Knight Rider oscillating red bar across the bottom two rows."""
+        w = self._cfg.display_width
+        h = self._cfg.display_height
+
+        # Bounce: phase 0→1 = left→right, phase 1→2 = right→left
+        phase = (time.time() / self._KR_SWEEP_SECS) % 2.0
+        pos = phase if phase <= 1.0 else 2.0 - phase
+        cx = int(pos * (w - 1))
+
+        # Brightness gradient; index = pixel distance from the bright centre
+        colours = [(255, 0, 0), (160, 0, 0), (60, 0, 0), (15, 0, 0)]
+        half = len(colours) - 1
+
+        for y in range(h - 2, h):          # bottom two rows
+            for dx in range(-half, half + 1):
+                px = cx + dx
+                if 0 <= px < w:
+                    canvas.SetPixel(px, y, *colours[abs(dx)])
+
 
 # --- Idle / status renderers ------------------------------------------------
 
 class BootRenderer(BaseRenderer):
     """Splash screen shown at startup before any serial data is received."""
+
+    def needs_render(self) -> bool:
+        return True
 
     def render(self, canvas, data) -> None:
         title_font = self._fonts.get("9x18B")
@@ -358,18 +395,30 @@ class BootRenderer(BaseRenderer):
                           self._cfg.boot_title_x, self._cfg.boot_title_y,
                           graphics.Color(0, 255, 0), "Superfly")
         graphics.DrawText(canvas, sub_font,
-                          0, self._cfg.boot_subtitle_y,
+                          self._cfg.boot_title_x, self._cfg.boot_subtitle_y + 17,
                           graphics.Color(0, 255, 255), "Display Ready")
 
 
 class NoDataRenderer(BaseRenderer):
     """Shown when no serial data has been received for the timeout period."""
 
+    def needs_render(self) -> bool:
+        return True
+
     def render(self, canvas, data) -> None:
         title_font = self._fonts.get("9x18B")
+        sub_font = self._fonts.get("6x9")
         graphics.DrawText(canvas, title_font,
                           self._cfg.boot_title_x, self._cfg.boot_title_y,
                           graphics.Color(255, 0, 0), "Superfly")
+        graphics.DrawText(canvas, sub_font,
+                          self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 17,
+                          graphics.Color(0, 255, 255), "Waiting for")        
+        graphics.DrawText(canvas, sub_font,
+                          self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 17 + 10,
+                          graphics.Color(0, 255, 255), "data...")        
+
+        self._draw_knight_rider(canvas)
 
 
 # --- Competition section renderers ------------------------------------------
@@ -406,11 +455,27 @@ class PrepRenderer(BaseRenderer):
     """
     Preparation time renderer.
 
-    For the first `display_config.pilot_list_display_time` seconds after a
-    'p_list' packet is received, shows the group pilot list.  After that
-    window expires it switches to the standard countdown timer.  No blocking
-    sleep is needed — the main loop continues normally throughout.
+    The display cycles indefinitely between a pilot-list view and a countdown
+    timer view for the duration of the Preparation section:
+
+        ┌────────────────┐  ┌────────┐  ┌────────────────┐  …
+        │ pilot list 15 s │  │ timer 5 s│  │ pilot list 15 s │
+        └────────────────┘  └────────┘  └────────────────┘
+
+    When the group has more than ``PILOTS_PER_PAGE`` pilots the list is split
+    into pages.  Each page is held for ``PAGE_HOLD_SECS`` seconds; a
+    horizontal-wipe then slides the current page out to the left while the
+    next page slides in from the right over ``WIPE_SECS`` seconds.
+    Page cycling restarts at the beginning of each pilot-list window.
+    Animation is driven by the main loop calling ``render()`` at up to 60 fps
+    whenever ``needs_render()`` returns True — no blocking sleep is used.
     """
+
+    PILOTS_PER_PAGE: int = 5
+    PILOT_SHOW_SECS: float = 15.0   # pilot list visible per cycle
+    TIMER_SHOW_SECS: float = 5.0    # countdown timer visible per cycle
+    PAGE_HOLD_SECS: float = 3.0     # seconds each page is held before wipe
+    WIPE_SECS: float = 0.4          # wipe transition duration
 
     def __init__(self, fonts: FontLibrary, config: DisplayConfig,
                  registry: PilotRegistry, pilot_list: PilotListStore) -> None:
@@ -418,12 +483,45 @@ class PrepRenderer(BaseRenderer):
         self._registry = registry
         self._pilot_list = pilot_list
 
+    # ------------------------------------------------------------------
+    # BaseRenderer interface
+    # ------------------------------------------------------------------
+
     def render(self, canvas, data: TimingData) -> None:
-        if (self._pilot_list.pilot_ids
-                and self._pilot_list.age() < self._cfg.pilot_list_display_time):
-            self._render_pilot_list(canvas, data)
+        if self._pilot_list.pilot_ids:
+            display_cycle = self.PILOT_SHOW_SECS + self.TIMER_SHOW_SECS
+            cycle_pos = self._pilot_list.age() % display_cycle
+            if cycle_pos < self.PILOT_SHOW_SECS:
+                pages = self._pages()
+                if len(pages) > 1:
+                    self._render_paged(canvas, data, pages)
+                else:
+                    self._render_page(canvas, data, pages[0] if pages else [],
+                                      x_offset=0)
+            else:
+                self._render_timer(canvas, data)
         else:
             self._render_timer(canvas, data)
+
+    def needs_render(self) -> bool:
+        """True while a page-wipe is in progress within the pilot-list window."""
+        if not self._pilot_list.pilot_ids or len(self._pages()) <= 1:
+            return False
+        display_cycle = self.PILOT_SHOW_SECS + self.TIMER_SHOW_SECS
+        cycle_pos = self._pilot_list.age() % display_cycle
+        if cycle_pos >= self.PILOT_SHOW_SECS:
+            return False  # currently showing the timer — no animation needed
+        page_cycle_pos = cycle_pos % (self.PAGE_HOLD_SECS + self.WIPE_SECS)
+        return page_cycle_pos >= self.PAGE_HOLD_SECS
+
+    # ------------------------------------------------------------------
+    # Internal helpers
+    # ------------------------------------------------------------------
+
+    def _pages(self) -> List[List[str]]:
+        ids = self._pilot_list.pilot_ids
+        return [ids[i:i + self.PILOTS_PER_PAGE]
+                for i in range(0, len(ids), self.PILOTS_PER_PAGE)]
 
     def _render_timer(self, canvas, data: TimingData) -> None:
         color = graphics.Color(0, 255, 255)
@@ -431,18 +529,69 @@ class PrepRenderer(BaseRenderer):
         self._draw_header(canvas, "PREP", self._round_group_label(data), color)
         self._draw_task_name(canvas, data.task_name)
 
-    def _render_pilot_list(self, canvas, data: TimingData) -> None:
+    def _render_paged(self, canvas, data: TimingData,
+                      pages: List[List[str]]) -> None:
+        """Render the correct page; animate a horizontal wipe when transitioning.
+
+        Uses the position within the current *pilot-list window* (0…PILOT_SHOW_SECS)
+        so that page cycling always restarts from page 0 each time the pilot
+        list re-appears after the timer interlude.
+        """
+        display_cycle = self.PILOT_SHOW_SECS + self.TIMER_SHOW_SECS
+        # Position within the current pilot-list window (0 … PILOT_SHOW_SECS)
+        pilot_age = self._pilot_list.age() % display_cycle
+
+        page_cycle = self.PAGE_HOLD_SECS + self.WIPE_SECS
+        page_idx = int(pilot_age / page_cycle) % len(pages)
+        page_cycle_pos = pilot_age % page_cycle
+
+        if page_cycle_pos < self.PAGE_HOLD_SECS:
+            # Steady state — show current page
+            self._render_page(canvas, data, pages[page_idx], x_offset=0,
+                              page_num=page_idx, total_pages=len(pages))
+        else:
+            # Wipe — current page slides left, next slides in from the right
+            progress = min((page_cycle_pos - self.PAGE_HOLD_SECS) / self.WIPE_SECS, 1.0)
+            offset_px = int(progress * self._cfg.display_width)
+            next_idx = (page_idx + 1) % len(pages)
+            self._render_page(canvas, data, pages[page_idx],
+                              x_offset=-offset_px,
+                              page_num=page_idx, total_pages=len(pages))
+            self._render_page(canvas, data, pages[next_idx],
+                              x_offset=self._cfg.display_width - offset_px,
+                              page_num=next_idx, total_pages=len(pages))
+
+    def _render_page(self, canvas, data: TimingData, pilot_ids: List[str],
+                     x_offset: int = 0,
+                     page_num: int = 0, total_pages: int = 1) -> None:
+        """Draw one page of pilots onto *canvas* shifted by *x_offset* pixels.
+
+        Pixels that land outside [0, display_width) are silently ignored by
+        both the hardware driver and the simulator, so clipping is free.
+        """
+        w = self._cfg.display_width
+        # Skip entirely when the page is fully off-screen
+        if x_offset <= -w or x_offset >= w:
+            return
+
         font_hdr = self._fonts.get("6x12")
         font_name = self._fonts.get("6x9")
-        graphics.DrawText(canvas, font_hdr, 0, self._cfg.header_y,
+
+        graphics.DrawText(canvas, font_hdr, x_offset, self._cfg.header_y,
                           graphics.Color(255, 255, 0), "Pilots")
-        graphics.DrawText(canvas, font_hdr, 40, self._cfg.header_y,
-                          graphics.Color(255, 255, 255),
-                          self._round_group_label(data))
+        if total_pages > 1:
+            page_label = f"{page_num + 1}/{total_pages}"
+            graphics.DrawText(canvas, font_hdr, x_offset + 40, self._cfg.header_y,
+                              graphics.Color(200, 200, 200), page_label)
+        else:
+            graphics.DrawText(canvas, font_hdr, x_offset + 40, self._cfg.header_y,
+                              graphics.Color(255, 255, 255),
+                              self._round_group_label(data))
+
         y = self._cfg.pilot_list_start_y
-        for pid in self._pilot_list.pilot_ids:
+        for pid in pilot_ids:
             name = self._registry.get_name(pid)
-            graphics.DrawText(canvas, font_name, 0, y,
+            graphics.DrawText(canvas, font_name, x_offset, y,
                               graphics.Color(255, 255, 255), name)
             y += self._cfg.pilot_list_line_height
 
@@ -474,6 +623,15 @@ class LandRenderer(BaseRenderer):
         color = graphics.Color(255, 255, 0)
         self._draw_large_time(canvas, data.time_minutes, data.time_seconds, color)
         self._draw_header(canvas, "LAND", self._round_group_label(data), color)
+        self._draw_task_name(canvas, data.task_name)
+
+class TestRenderer(BaseRenderer):
+    """Test window countdown (yellow)."""
+
+    def render(self, canvas, data: TimingData) -> None:
+        color = graphics.Color(255, 255, 0)
+        self._draw_large_time(canvas, data.time_minutes, data.time_seconds, color)
+        self._draw_header(canvas, "TEST", self._round_group_label(data), color)
         self._draw_task_name(canvas, data.task_name)
 
 
@@ -616,6 +774,10 @@ class MatrixDisplayApp:
         # Deduplication: (section, slot_time) pair of the last rendered frame
         self._last_rendered_key: Optional[tuple] = None
 
+        # Active renderer + its last data — used to drive animation re-renders
+        self._active_renderer: Optional[BaseRenderer] = None
+        self._active_data: Optional[TimingData] = None
+
         # Shared pilot list store — written by the loop, read by PrepRenderer
         self._pilot_list_store = PilotListStore()
 
@@ -651,6 +813,7 @@ class MatrixDisplayApp:
             "No Fly Time":              NoFlyRenderer(fonts, cfg),
             "Working Time":             WorkRenderer(fonts, cfg),
             "Landing Window":           LandRenderer(fonts, cfg),
+            "Test Flying Time":         TestRenderer(fonts, cfg),
         }
         for section, renderer in section_renderers.items():
             self._router.register(section, renderer)
@@ -683,10 +846,14 @@ class MatrixDisplayApp:
         self._matrix.swap()
 
     def _show_boot_screen(self) -> None:
+        self._active_renderer = self._boot_renderer
+        self._active_data = None
         self._render_and_swap(self._boot_renderer, None)
         logger.info("Boot screen displayed")
 
     def _show_no_data_screen(self) -> None:
+        self._active_renderer = self._no_data_renderer
+        self._active_data = None
         self._render_and_swap(self._no_data_renderer, None)
         logger.warning("No serial data for %.0fs — showing no-data screen",
                        self._display_cfg.no_data_timeout)
@@ -708,16 +875,20 @@ class MatrixDisplayApp:
         self._last_round_num = timing.round_num
         self._last_group_letter = timing.group_letter
 
-        render_key = (timing.section, timing.slot_time)
-        if render_key == self._last_rendered_key:
-            self._log.debug("Skipping duplicate frame: section='%s' slot_time=%d",
-                            timing.section, timing.slot_time)
-            return
-
         renderer = self._router.get(timing.section)
         if renderer is None:
             self._log.warning("No renderer for section '%s'; skipping render",
                               timing.section)
+            return
+
+        # Always keep active refs current so the animation loop can re-render
+        self._active_renderer = renderer
+        self._active_data = timing
+
+        render_key = (timing.section, timing.slot_time)
+        if render_key == self._last_rendered_key and not renderer.needs_render():
+            self._log.debug("Skipping duplicate frame: section='%s' slot_time=%d",
+                            timing.section, timing.slot_time)
             return
 
         self._log.debug("Rendering section '%s' slot_time=%d",
@@ -765,6 +936,7 @@ class MatrixDisplayApp:
         self._show_boot_screen()
 
         no_data_displayed = False
+        was_animating = False   # tracks whether the previous iteration was animating
         logger.info("Entering main display loop — press CTRL-C to stop")
 
         while True:
@@ -775,7 +947,22 @@ class MatrixDisplayApp:
 
             # -- Wait for data (small sleep avoids CPU spin when idle) ----
             if not self._serial.has_data():
-                time.sleep(0.01)
+                # Drive animation frames (e.g. pilot-list page wipes) even
+                # when no new serial packet has arrived.
+                #
+                # When needs_render() goes False we render ONE extra frame so
+                # the display lands cleanly at the fully-completed wipe position
+                # rather than freezing a few pixels short of the destination
+                # (was_animating catches the True→False transition).
+                animating = (self._active_renderer is not None
+                             and self._active_renderer.needs_render())
+                if animating or was_animating:
+                    if self._active_renderer is not None:
+                        self._render_and_swap(self._active_renderer, self._active_data)
+                    time.sleep(0.016)  # cap at ~60 fps
+                else:
+                    time.sleep(0.01)
+                was_animating = animating
                 continue
 
             # -- Read and parse packet ------------------------------------
@@ -841,6 +1028,8 @@ def main() -> None:
         no_data_timeout=30.0,
         pilot_list_display_time=15.0,
         time_row_y=48,
+        display_width=matrix_config.cols * matrix_config.chain_length,
+        display_height=matrix_config.rows * matrix_config.parallel,
     )
 
     app = MatrixDisplayApp(serial_config, matrix_config, display_config)
