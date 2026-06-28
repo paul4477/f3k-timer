@@ -64,6 +64,7 @@ class SerialConfig:
     port: str = "COM4"
     baud_rate: int = 115200 #19200
     timeout: float = 0.3
+    startup_delay: float = 0.0       # seconds to wait before opening the port
 
 
 @dataclass
@@ -144,6 +145,12 @@ class TimingData:
         except (ValueError, TypeError):
             slot_time = 0   # expected for placeholder values like "--:--"
 
+        raw_flight = data.get("f_num", 0)
+        try:
+            flight_num = int(raw_flight)
+        except (ValueError, TypeError):
+            flight_num = 0   # expected for placeholder values like "-"
+
         return cls(
             section=data["sect"],
             time_s=data["time_s"],
@@ -151,7 +158,7 @@ class TimingData:
             no_fly=bool(data.get("no_fly", False)),
             round_num=str(data.get("r_num", "")),
             group_letter=str(data.get("g_let", "")),
-            flight_num=int(data.get("f_num", 0)),
+            flight_num=flight_num,
             task_name=task_name,
         )
 
@@ -295,6 +302,12 @@ class PilotListStore:
         self.pilot_ids = list(pilot_ids)
         self._received_at = time.time()
         logger.debug("Pilot list updated: %d pilots", len(self.pilot_ids))
+
+    def clear(self) -> None:
+        """Discard the stored list (e.g. when the flying group changes)."""
+        self.pilot_ids = []
+        self._received_at = 0.0
+        logger.debug("Pilot list cleared")
 
     def age(self) -> float:
         """Seconds elapsed since the pilot list was last updated."""
@@ -472,9 +485,8 @@ class PrepRenderer(BaseRenderer):
     """
 
     PILOTS_PER_PAGE: int = 5
-    PILOT_SHOW_SECS: float = 15.0   # pilot list visible per cycle
     TIMER_SHOW_SECS: float = 5.0    # countdown timer visible per cycle
-    PAGE_HOLD_SECS: float = 3.0     # seconds each page is held before wipe
+    PAGE_HOLD_SECS: float = 5.0     # seconds each page is held; total pilot window = pages × this
     WIPE_SECS: float = 0.4          # wipe transition duration
 
     def __init__(self, fonts: FontLibrary, config: DisplayConfig,
@@ -489,9 +501,10 @@ class PrepRenderer(BaseRenderer):
 
     def render(self, canvas, data: TimingData) -> None:
         if self._pilot_list.pilot_ids:
-            display_cycle = self.PILOT_SHOW_SECS + self.TIMER_SHOW_SECS
+            pilot_show_secs = self._pilot_show_secs()
+            display_cycle = pilot_show_secs + self.TIMER_SHOW_SECS
             cycle_pos = self._pilot_list.age() % display_cycle
-            if cycle_pos < self.PILOT_SHOW_SECS:
+            if cycle_pos < pilot_show_secs:
                 pages = self._pages()
                 if len(pages) > 1:
                     self._render_paged(canvas, data, pages)
@@ -507,9 +520,10 @@ class PrepRenderer(BaseRenderer):
         """True while a page-wipe is in progress within the pilot-list window."""
         if not self._pilot_list.pilot_ids or len(self._pages()) <= 1:
             return False
-        display_cycle = self.PILOT_SHOW_SECS + self.TIMER_SHOW_SECS
+        pilot_show_secs = self._pilot_show_secs()
+        display_cycle = pilot_show_secs + self.TIMER_SHOW_SECS
         cycle_pos = self._pilot_list.age() % display_cycle
-        if cycle_pos >= self.PILOT_SHOW_SECS:
+        if cycle_pos >= pilot_show_secs:
             return False  # currently showing the timer — no animation needed
         page_cycle_pos = cycle_pos % (self.PAGE_HOLD_SECS + self.WIPE_SECS)
         return page_cycle_pos >= self.PAGE_HOLD_SECS
@@ -523,6 +537,16 @@ class PrepRenderer(BaseRenderer):
         return [ids[i:i + self.PILOTS_PER_PAGE]
                 for i in range(0, len(ids), self.PILOTS_PER_PAGE)]
 
+    def _pilot_show_secs(self) -> float:
+        """Total seconds the pilot list occupies per display cycle.
+
+        Each page is held for PAGE_HOLD_SECS; there are (n-1) wipe transitions
+        between the n pages.  The final page is never wiped — it simply holds
+        until the timer window takes over.
+        """
+        n = len(self._pages())
+        return n * self.PAGE_HOLD_SECS + (n - 1) * self.WIPE_SECS
+
     def _render_timer(self, canvas, data: TimingData) -> None:
         color = graphics.Color(0, 255, 255)
         self._draw_large_time(canvas, data.time_minutes, data.time_seconds, color)
@@ -533,12 +557,13 @@ class PrepRenderer(BaseRenderer):
                       pages: List[List[str]]) -> None:
         """Render the correct page; animate a horizontal wipe when transitioning.
 
-        Uses the position within the current *pilot-list window* (0…PILOT_SHOW_SECS)
+        Uses the position within the current *pilot-list window* (0…pilot_show_secs)
         so that page cycling always restarts from page 0 each time the pilot
         list re-appears after the timer interlude.
         """
-        display_cycle = self.PILOT_SHOW_SECS + self.TIMER_SHOW_SECS
-        # Position within the current pilot-list window (0 … PILOT_SHOW_SECS)
+        pilot_show_secs = self._pilot_show_secs()
+        display_cycle = pilot_show_secs + self.TIMER_SHOW_SECS
+        # Position within the current pilot-list window (0 … pilot_show_secs)
         pilot_age = self._pilot_list.age() % display_cycle
 
         page_cycle = self.PAGE_HOLD_SECS + self.WIPE_SECS
@@ -763,6 +788,7 @@ class MatrixDisplayApp:
         self._fonts = FontLibrary(display_config.font_base_path)
         self._matrix = MatrixController(matrix_config)
         self._serial = SerialReader(serial_config)
+        self._startup_delay: float = serial_config.startup_delay
         self._pilots = PilotRegistry()
         self._router = DisplayRouter()
 
@@ -823,12 +849,12 @@ class MatrixDisplayApp:
         logger.info("Display routes configured (%d sections)", len(section_renderers))
 
     def initialize(self) -> None:
-        """Load fonts, initialise hardware, and open the serial port."""
+        """Load fonts, initialise hardware, and register renderers."""
         logger.info("Initialising MatrixDisplayApp")
         self._load_fonts()
         self._matrix.initialize()
         self._setup_routes()
-        self._serial.connect()
+        # Serial port is opened in run() so the boot animation plays first.
 
     def shutdown(self) -> None:
         """Release hardware resources."""
@@ -866,11 +892,24 @@ class MatrixDisplayApp:
         try:
             timing = TimingData.from_dict(payload)
         except KeyError as exc:
-            self._log.warning("Missing field in 'time' packet: %s", exc)
+            self._log.warning("Missing field in 'time' packet: %s — payload: %s", exc, payload)
             return
         except (TypeError, ValueError) as exc:
-            self._log.warning("Invalid value in 'time' packet: %s", exc)
+            self._log.warning("Invalid value in 'time' packet: %s — payload: %s", exc, payload)
             return
+
+        # Clear the stale pilot list whenever the flying group changes so that
+        # PrepRenderer shows the timer (not the previous group's names) while
+        # waiting for the new p_list packet to arrive.
+        if (timing.round_num != self._last_round_num
+                or timing.group_letter != self._last_group_letter):
+            self._pilot_list_store.clear()
+            self._last_rendered_key = None
+            self._log.info(
+                "Group changed (R:%s G:%s \u2192 R:%s G:%s) \u2014 pilot list cleared",
+                self._last_round_num, self._last_group_letter,
+                timing.round_num, timing.group_letter,
+            )
 
         self._last_round_num = timing.round_num
         self._last_group_letter = timing.group_letter
@@ -934,6 +973,18 @@ class MatrixDisplayApp:
         """
         self._last_data_time = time.time()   # start the no-data timeout clock
         self._show_boot_screen()
+
+        # Startup delay — animate the boot screen while waiting for the serial
+        # device to become ready (e.g. a microcontroller that needs time to boot).
+        if self._startup_delay > 0:
+            logger.info("Startup delay: %.1f s", self._startup_delay)
+            deadline = time.time() + self._startup_delay
+            while time.time() < deadline:
+                if self._active_renderer is not None and self._active_renderer.needs_render():
+                    self._render_and_swap(self._active_renderer, self._active_data)
+                time.sleep(0.016)
+
+        self._serial.connect()
 
         no_data_displayed = False
         was_animating = False   # tracks whether the previous iteration was animating
@@ -1006,8 +1057,8 @@ def main() -> None:
         #port="/dev/ttyUSB0",
         #baud_rate=19200,
         port="COM4",
-        baud_rate=115200,
-
+        baud_rate=19200,
+        startup_delay=3.0,
         timeout=0.3,
     )
     matrix_config = MatrixConfig(
