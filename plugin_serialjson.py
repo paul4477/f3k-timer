@@ -60,8 +60,8 @@ class SerialJson(PluginBase):
         self.logger.debug(f"Sending message: {message}, length: {len(message)}")
         self.write(message)
 
-    async def onTick(self, state):
-        if not self.limit_rate():        
+    async def onTick(self, state, ignore_rate_limit=False):
+        if ignore_rate_limit or not self.limit_rate():        
             #self.write(json.dumps(state.get_dict()).encode('ascii'))
             self.write_message('time', state.get_dict())
 

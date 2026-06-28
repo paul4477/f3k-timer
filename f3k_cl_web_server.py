@@ -431,9 +431,9 @@ class WebFrontend(PluginBase):
         else:
             return True
 
-    async def onTick(self, state):
+    async def onTick(self, state, ignore_rate_limit=False):
         # Send the bits of state needed to the web clients
-        if ((not self.limit_rate(state)) and state and state.section):
+        if ((ignore_rate_limit or not self.limit_rate(state)) and state and state.section):
             d = state.get_dict()
             for q in list(self.client_queues):
                 try: 

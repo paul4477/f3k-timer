@@ -77,8 +77,8 @@ class PluginBase():
         else:
             return True
        
-    async def onTick(self, state):
-        #if (not self.limit_rate()) and self.enabled():        
+    async def onTick(self, state, ignore_rate_limit=False):
+        #if (ignore_rate_limit or not self.limit_rate()) and self.enabled():        
         pass
 
     async def onSecond(self, state):
