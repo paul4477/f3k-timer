@@ -25,14 +25,29 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
 import serial
-from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+
+# ---------------------------------------------------------------------------
+# Hardware driver vs. pygame simulator
+#
+# Pass ``--simulate`` on the command line to use the pygame LED simulator
+# instead of the real rgbmatrix hardware driver.  The simulator is also
+# activated automatically when the ``rgbmatrix`` package is not installed
+# (e.g. when developing on a non-Raspberry Pi machine).
+# ---------------------------------------------------------------------------
+try:
+    print ("sys.argv:", sys.argv)
+    if "--simulate" in sys.argv:
+        raise ImportError("simulator requested via --simulate")
+    from rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics
+except ImportError:
+    from sim_rgbmatrix import RGBMatrix, RGBMatrixOptions, graphics  # type: ignore[assignment]
 
 # ---------------------------------------------------------------------------
 # Logging — write to stderr at DEBUG level by default; callers may override.
 # ---------------------------------------------------------------------------
 logging.basicConfig(
     stream=sys.stderr,
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -45,8 +60,9 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SerialConfig:
     """Serial port connection parameters."""
-    port: str = "/dev/ttyUSB0"
-    baud_rate: int = 19200
+    #port: str = "/dev/ttyUSB0"
+    port: str = "COM4"
+    baud_rate: int = 115200 #19200
     timeout: float = 0.3
 
 
@@ -73,7 +89,7 @@ class DisplayConfig:
     no_data_timeout: float = 30.0        # seconds before showing no-data screen
     pilot_list_display_time: float = 15.0  # seconds to hold pilot list display
     time_row_y: int = 48                 # y-baseline for the large time font
-    colon_x: int = 45                   # x-position of the colon separator
+    colon_x: int = 41                   # x-position of the colon separator
     colon_y: int = 43
     time_sec_x: int = 50                # x-position of the seconds digits
     time_sec_y: int = 48
@@ -250,6 +266,36 @@ class PilotRegistry:
 
 
 # ---------------------------------------------------------------------------
+# Pilot list store
+# ---------------------------------------------------------------------------
+
+class PilotListStore:
+    """
+    Shared store for the pilot list of the current flying group.
+
+    Written by the main loop when a 'p_list' packet arrives; read by
+    PrepRenderer to decide whether to show the pilot list or the countdown
+    timer during preparation time.
+    """
+
+    def __init__(self) -> None:
+        self.pilot_ids: List[str] = []
+        self._received_at: float = 0.0
+
+    def update(self, pilot_ids: List[str]) -> None:
+        """Replace the stored list and record the receipt timestamp."""
+        self.pilot_ids = list(pilot_ids)
+        self._received_at = time.time()
+        logger.debug("Pilot list updated: %d pilots", len(self.pilot_ids))
+
+    def age(self) -> float:
+        """Seconds elapsed since the pilot list was last updated."""
+        if not self._received_at:
+            return float("inf")
+        return time.time() - self._received_at
+
+
+# ---------------------------------------------------------------------------
 # Renderer base class and concrete renderers
 # ---------------------------------------------------------------------------
 
@@ -357,13 +403,48 @@ class AnnouncementRenderer(BaseRenderer):
 
 
 class PrepRenderer(BaseRenderer):
-    """Preparation time countdown (cyan)."""
+    """
+    Preparation time renderer.
+
+    For the first `display_config.pilot_list_display_time` seconds after a
+    'p_list' packet is received, shows the group pilot list.  After that
+    window expires it switches to the standard countdown timer.  No blocking
+    sleep is needed — the main loop continues normally throughout.
+    """
+
+    def __init__(self, fonts: FontLibrary, config: DisplayConfig,
+                 registry: PilotRegistry, pilot_list: PilotListStore) -> None:
+        super().__init__(fonts, config)
+        self._registry = registry
+        self._pilot_list = pilot_list
 
     def render(self, canvas, data: TimingData) -> None:
+        if (self._pilot_list.pilot_ids
+                and self._pilot_list.age() < self._cfg.pilot_list_display_time):
+            self._render_pilot_list(canvas, data)
+        else:
+            self._render_timer(canvas, data)
+
+    def _render_timer(self, canvas, data: TimingData) -> None:
         color = graphics.Color(0, 255, 255)
         self._draw_large_time(canvas, data.time_minutes, data.time_seconds, color)
         self._draw_header(canvas, "PREP", self._round_group_label(data), color)
         self._draw_task_name(canvas, data.task_name)
+
+    def _render_pilot_list(self, canvas, data: TimingData) -> None:
+        font_hdr = self._fonts.get("6x12")
+        font_name = self._fonts.get("6x9")
+        graphics.DrawText(canvas, font_hdr, 0, self._cfg.header_y,
+                          graphics.Color(255, 255, 0), "Pilots")
+        graphics.DrawText(canvas, font_hdr, 40, self._cfg.header_y,
+                          graphics.Color(255, 255, 255),
+                          self._round_group_label(data))
+        y = self._cfg.pilot_list_start_y
+        for pid in self._pilot_list.pilot_ids:
+            name = self._registry.get_name(pid)
+            graphics.DrawText(canvas, font_name, 0, y,
+                              graphics.Color(255, 255, 255), name)
+            y += self._cfg.pilot_list_line_height
 
 
 class NoFlyRenderer(BaseRenderer):
@@ -394,41 +475,6 @@ class LandRenderer(BaseRenderer):
         self._draw_large_time(canvas, data.time_minutes, data.time_seconds, color)
         self._draw_header(canvas, "LAND", self._round_group_label(data), color)
         self._draw_task_name(canvas, data.task_name)
-
-
-class PilotListRenderer(BaseRenderer):
-    """Scrolls through the list of pilots flying in the upcoming group."""
-
-    def __init__(self, fonts: FontLibrary, config: DisplayConfig,
-                 registry: PilotRegistry) -> None:
-        super().__init__(fonts, config)
-        self._registry = registry
-
-    def render(self, canvas, data: dict) -> None:
-        """
-        *data* keys:
-            pilot_ids   : list[str]
-            round_num   : str
-            group_letter: str
-        """
-        font_hdr = self._fonts.get("6x12")
-        font_name = self._fonts.get("6x9")
-        pilot_ids: List[str] = data.get("pilot_ids", [])
-        round_num: str = data.get("round_num", "")
-        group_letter: str = data.get("group_letter", "")
-
-        graphics.DrawText(canvas, font_hdr, 0, self._cfg.header_y,
-                          graphics.Color(255, 255, 0), "Pilots")
-        graphics.DrawText(canvas, font_hdr, 40, self._cfg.header_y,
-                          graphics.Color(255, 255, 255),
-                          f"R:{round_num} Gr:{group_letter}")
-
-        y = self._cfg.pilot_list_start_y
-        for pilot_id in pilot_ids:
-            name = self._registry.get_name(pilot_id)
-            graphics.DrawText(canvas, font_name, 0, y,
-                              graphics.Color(255, 255, 255), name)
-            y += self._cfg.pilot_list_line_height
 
 
 # ---------------------------------------------------------------------------
@@ -562,7 +608,7 @@ class MatrixDisplayApp:
         self._pilots = PilotRegistry()
         self._router = DisplayRouter()
 
-        # Track round/group across packet types (p_list needs last time values)
+        # Track round/group across packet types
         self._last_round_num: str = ""
         self._last_group_letter: str = ""
         self._last_data_time: float = 0.0
@@ -570,10 +616,12 @@ class MatrixDisplayApp:
         # Deduplication: (section, slot_time) pair of the last rendered frame
         self._last_rendered_key: Optional[tuple] = None
 
+        # Shared pilot list store — written by the loop, read by PrepRenderer
+        self._pilot_list_store = PilotListStore()
+
         # Cached renderer references for states not keyed by section name
         self._boot_renderer: Optional[BaseRenderer] = None
         self._no_data_renderer: Optional[BaseRenderer] = None
-        self._pilot_list_renderer: Optional[PilotListRenderer] = None
 
     # ------------------------------------------------------------------
     # Initialisation
@@ -599,7 +647,7 @@ class MatrixDisplayApp:
             "Actual Time HH:MM":        TimeOfDayRenderer(fonts, cfg),
             "Waiting for next group":   WaitingRenderer(fonts, cfg),
             "Announcement in progress": AnnouncementRenderer(fonts, cfg),
-            "Preparation Time":         PrepRenderer(fonts, cfg),
+            "Preparation Time":         PrepRenderer(fonts, cfg, pilots, self._pilot_list_store),
             "No Fly Time":              NoFlyRenderer(fonts, cfg),
             "Working Time":             WorkRenderer(fonts, cfg),
             "Landing Window":           LandRenderer(fonts, cfg),
@@ -609,7 +657,6 @@ class MatrixDisplayApp:
 
         self._boot_renderer = BootRenderer(fonts, cfg)
         self._no_data_renderer = NoDataRenderer(fonts, cfg)
-        self._pilot_list_renderer = PilotListRenderer(fonts, cfg, pilots)
         logger.info("Display routes configured (%d sections)", len(section_renderers))
 
     def initialize(self) -> None:
@@ -685,6 +732,7 @@ class MatrixDisplayApp:
         except KeyError as exc:
             self._log.warning("Missing field in 'p_def' packet: %s", exc)
             return
+        self._log.info("Registering pilot: id='%s' name='%s'", pilot_id, name)
         self._pilots.register(pilot_id, name)
 
     def _handle_pilot_list(self, payload) -> None:
@@ -693,15 +741,13 @@ class MatrixDisplayApp:
                 "Expected list payload for 'p_list', got %s", type(payload).__name__
             )
             return
-
-        data = {
-            "pilot_ids":    [str(pid) for pid in payload],
-            "round_num":    self._last_round_num,
-            "group_letter": self._last_group_letter,
-        }
-        self._render_and_swap(self._pilot_list_renderer, data)
-        time.sleep(self._display_cfg.pilot_list_display_time)
-        self._serial.flush_input()
+        self._pilot_list_store.update([str(pid) for pid in payload])
+        # Clear the dedup key so the next time packet triggers an immediate
+        # re-render to show the pilot list rather than waiting for slot_time
+        # to change.
+        self._last_rendered_key = None
+        self._log.info("Stored pilot list (%d pilots); PrepRenderer will display it",
+                       len(payload))
 
     # ------------------------------------------------------------------
     # Main loop
@@ -770,8 +816,11 @@ class MatrixDisplayApp:
 
 def main() -> None:
     serial_config = SerialConfig(
-        port="/dev/ttyUSB0",
-        baud_rate=19200,
+        #port="/dev/ttyUSB0",
+        #baud_rate=19200,
+        port="COM4",
+        baud_rate=115200,
+
         timeout=0.3,
     )
     matrix_config = MatrixConfig(
