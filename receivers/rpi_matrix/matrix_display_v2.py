@@ -472,7 +472,6 @@ class BootRenderer(BaseRenderer):
             graphics.DrawLine(canvas, cx - dx, cy - dy, cx + dx, cy + dy, col)
 
         # ---- Text overlay ---------------------------------------------------
-        title_font = self._fonts.get("9x18B")
         title_font = self._fonts.get("spleen-12x24")
         sub_font   = self._fonts.get("6x9")
         graphics.DrawText(canvas, title_font,
@@ -1026,15 +1025,9 @@ class MatrixDisplayApp:
             "time":    "matrix_time-40.bdf",
             "6x12":    "clR6x12.bdf",
             "6x9":     "6x9.bdf",
-            "9x18B":   "9x18B.bdf",
-            "10x32B-32": "10x32B-32.bdf",  # 32 px tall bold, monospace, full ASCII
             "spleen-12x24": "spleen-12x24.bdf",  # 24 px monospace, full ASCII
             "spleen-16x32": "spleen-16x32.bdf",  # 32 px monospace, full ASCII
-            "spleen-24x48": "spleen-24x48.bdf",  # 48 px monospace, full ASCII
-            "spleen-20x64": "spleen-20x64.bdf",  # 64 px tall, 20 px ink + 2 px right pad, digits+colon
             "spleen-22x64": "spleen-22x64.bdf",  # 64 px tall, 22 px ink + 2 px right pad, digits+colon
-            "spleen-24x64": "spleen-24x64.bdf",  # 64 px tall, 24 px wide, digits+colon only
-            "spleen-28x64": "spleen-28x64.bdf",  # 64 px monospace, full ASCII
             "spleen-32x64": "spleen-32x64.bdf",  # 64 px monospace, full ASCII
         }
         for name, filename in font_map.items():
