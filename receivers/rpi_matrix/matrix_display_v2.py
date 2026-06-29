@@ -18,6 +18,7 @@ Refactored to use an object-oriented architecture with:
 
 import json
 import logging
+import math
 import sys
 import time
 from abc import ABC, abstractmethod
@@ -47,7 +48,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 logging.basicConfig(
     stream=sys.stderr,
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -95,13 +96,13 @@ class DisplayConfig:
     time_sec_x: int = 50                # x-position of the seconds digits
     time_sec_y: int = 48
     header_left_x: int = 0             # x-position of the left header label
-    header_right_x: int = 30           # x-position of the right header label
+    header_right_x: int = 42          # x-position of the right header label
     header_y: int = 8
     task_name_y: int = 15
     pilot_list_start_y: int = 15
     pilot_list_line_height: int = 7
-    boot_title_x: int = 10
-    boot_title_y: int = 12
+    boot_title_x: int = 0
+    boot_title_y: int = 24
     boot_subtitle_y: int = 8
     display_width: int = 96              # total panel width  = cols × chain_length
     display_height: int = 48             # total panel height = rows × parallel
@@ -138,7 +139,7 @@ class TimingData:
         Raises KeyError if required fields are absent.
         """
         raw_task = data.get("task_name", "")
-        task_name = raw_task[13:] if len(raw_task) > 13 else raw_task
+        task_name = raw_task.split("- ", 1)[1] if "- " in raw_task else raw_task
         raw_slot = data.get("slot_time", 0)
         try:
             slot_time = int(raw_slot)
@@ -396,20 +397,87 @@ class BaseRenderer(ABC):
 # --- Idle / status renderers ------------------------------------------------
 
 class BootRenderer(BaseRenderer):
-    """Splash screen shown at startup before any serial data is received."""
+    """Splash screen shown at startup before any serial data is received.
+
+    Renders a composite animation:
+      - Rainbow-coloured expanding concentric rectangles from the display centre
+      - Slowly tumbling diagonal lines through the centre
+      - 'Superfly' title and 'Display Ready' text overlaid in white
+
+    Uses ``graphics.DrawLine`` for all line/rectangle drawing.  The animation
+    runs continuously (needs_render → True) so the startup-delay loop keeps
+    refreshing the display at ~60 fps.
+    """
+
+    _N_RECTS: int = 5          # number of concentric expanding rectangles
+    _RECT_SPEED: float = 0.4   # expand cycles per second
+    _N_LINES: int = 4          # number of tumbling lines
+    _LINE_SPEED: float = 0.12  # full rotations per second
+    _HUE_SPEED: float = 0.08   # rainbow hue cycles per second
+
+    @staticmethod
+    def _hsv_to_rgb(h: float, s: float = 1.0, v: float = 1.0):
+        """Convert HSV (h in [0, 1)) to an (r, g, b) tuple each in [0, 255]."""
+        h6 = (h % 1.0) * 6.0
+        i = int(h6)
+        f = h6 - i
+        p = v * (1.0 - s)
+        q = v * (1.0 - s * f)
+        t = v * (1.0 - s * (1.0 - f))
+        rgb = [
+            (v, t, p), (q, v, p), (p, v, t),
+            (p, q, v), (t, p, v), (v, p, q),
+        ][i % 6]
+        return (int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255))
 
     def needs_render(self) -> bool:
         return True
 
     def render(self, canvas, data) -> None:
+        w = self._cfg.display_width   # 96
+        h = self._cfg.display_height  # 48
+        cx = w // 2
+        cy = h // 2
+        t = time.time()
+
+        # ---- Expanding concentric rectangles --------------------------------
+        # Each rectangle expands from the centre outward and wraps around;
+        # they are spaced evenly through the cycle so there are always
+        # _N_RECTS rings on screen at once.
+        max_half = max(cx, cy) + 4
+        for i in range(self._N_RECTS):
+            phase = ((t * self._RECT_SPEED) + i / self._N_RECTS) % 1.0
+            half = int(phase * max_half)
+            if half < 1:
+                continue
+            hue = (t * self._HUE_SPEED + i / self._N_RECTS) % 1.0
+            col = graphics.Color(*self._hsv_to_rgb(hue))
+            x1, y1 = cx - half, cy - half
+            x2, y2 = cx + half, cy + half
+            graphics.DrawLine(canvas, x1, y1, x2, y1, col)  # top
+            graphics.DrawLine(canvas, x1, y2, x2, y2, col)  # bottom
+            graphics.DrawLine(canvas, x1, y1, x1, y2, col)  # left
+            graphics.DrawLine(canvas, x2, y1, x2, y2, col)  # right
+
+        # ---- Tumbling diagonal lines ----------------------------------------
+        # Each line rotates slowly through the centre; lines are evenly spread
+        # in angle and use complementary hues to the rectangles.
+        for i in range(self._N_LINES):
+            angle = (t * self._LINE_SPEED * 2.0 * math.pi
+                     + i * math.pi / self._N_LINES)
+            dx = int(math.cos(angle) * cx * 1.1)
+            dy = int(math.sin(angle) * cy * 1.1)
+            hue = (t * self._HUE_SPEED + 0.5 + i / self._N_LINES) % 1.0
+            col = graphics.Color(*self._hsv_to_rgb(hue, 0.8, 0.85))
+            graphics.DrawLine(canvas, cx - dx, cy - dy, cx + dx, cy + dy, col)
+
+        # ---- Text overlay ---------------------------------------------------
         title_font = self._fonts.get("9x18B")
-        sub_font = self._fonts.get("6x9")
+        title_font = self._fonts.get("spleen-12x24")
+        sub_font   = self._fonts.get("6x9")
         graphics.DrawText(canvas, title_font,
                           self._cfg.boot_title_x, self._cfg.boot_title_y,
-                          graphics.Color(0, 255, 0), "Superfly")
-        graphics.DrawText(canvas, sub_font,
-                          self._cfg.boot_title_x, self._cfg.boot_subtitle_y + 17,
-                          graphics.Color(0, 255, 255), "Display Ready")
+                          graphics.Color(255, 255, 255), "Superfly")
 
 
 class NoDataRenderer(BaseRenderer):
@@ -419,16 +487,17 @@ class NoDataRenderer(BaseRenderer):
         return True
 
     def render(self, canvas, data) -> None:
-        title_font = self._fonts.get("9x18B")
+        #title_font = self._fonts.get("9x18B")
+        title_font = self._fonts.get("spleen-12x24")
         sub_font = self._fonts.get("6x9")
         graphics.DrawText(canvas, title_font,
                           self._cfg.boot_title_x, self._cfg.boot_title_y,
-                          graphics.Color(255, 0, 0), "Superfly")
+                          graphics.Color(255, 255, 255), "Superfly")
         graphics.DrawText(canvas, sub_font,
-                          self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 17,
+                          self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 27,
                           graphics.Color(0, 255, 255), "Waiting for")        
         graphics.DrawText(canvas, sub_font,
-                          self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 17 + 10,
+                          self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 27 + 10,
                           graphics.Color(0, 255, 255), "data...")        
 
         self._draw_knight_rider(canvas)
@@ -442,7 +511,7 @@ class TimeOfDayRenderer(BaseRenderer):
     def render(self, canvas, data: TimingData) -> None:
         color = graphics.Color(255, 0, 255)
         self._draw_large_time(canvas, data.time_minutes, data.time_seconds, color)
-        self._draw_header(canvas, "TIME OF DAY", "", color)
+        self._draw_header(canvas, "TIME", "", color)
 
 
 class WaitingRenderer(BaseRenderer):
@@ -456,12 +525,55 @@ class WaitingRenderer(BaseRenderer):
 
 
 class AnnouncementRenderer(BaseRenderer):
-    """Displayed while the announcer is reading the next group."""
+    """Displayed while the announcer is reading the next group.
+
+    The display is split 2/3 : 1/3 to give the round number more room.
+
+        Left panel  (0 … 63, 64 px): round number — up to 2 digits × 32 px
+        Right panel (64 … 95, 32 px): group letter — exactly 1 × 32 px
+
+    Uses spleen-32x64 (monospace, 32 px wide per character).  The font is
+    64 px tall; on a 48 px display it fills the full height with the top
+    portion clipped.  Neither panel carries a label — both panels are at most
+    one character wide so no label fits without overlap.
+
+    Layout (96 × 48 display):
+
+        ┌──────────────────────────────────────────────────┐
+        │                  ║                               │
+        │      12          ║         B                     │
+        └──────────────────────────────────────────────────┘
+    """
+
+    # spleen-32x64: every character is exactly 32 px wide.
+    _CHAR_W: int = 32
+    _VALUE_Y: int = 45   # baseline at display bottom; 64 px tall font fills full height
 
     def render(self, canvas, data: TimingData) -> None:
-        color = graphics.Color(255, 0, 255)
-        self._draw_header(canvas, "SPEAK", self._round_group_label(data), color)
-        self._draw_task_name(canvas, data.task_name)
+        font_large = self._fonts.get("spleen-32x64")
+        w   = self._cfg.display_width    # 96
+        h   = self._cfg.display_height   # 48
+        mid = (w * 2) // 3              # 64 — divider between 2/3 and 1/3
+
+        left_w  = mid        # 64
+        right_w = w - mid    # 32
+
+        # Subtle vertical divider
+        #for y in range(2, h - 2):
+        #    canvas.SetPixel(mid, y, 50, 50, 50)
+
+        # --- Left panel: round number (1 or 2 digits × 32 px) ---
+        rnd_w   = len(data.round_num) * self._CHAR_W
+        value_x = max(0, (left_w - rnd_w) // 2)           # centre digits in 64 px
+        graphics.DrawText(canvas, font_large,
+                          value_x, self._VALUE_Y,
+                          graphics.Color(255, 220, 0), data.round_num)
+
+        # --- Right panel: group letter (exactly 32 px = full panel width) ---
+        grp_x = mid + max(0, (right_w - self._CHAR_W) // 2)
+        graphics.DrawText(canvas, font_large,
+                          grp_x, self._VALUE_Y,
+                          graphics.Color(0, 200, 255), data.group_letter)
 
 
 class PrepRenderer(BaseRenderer):
@@ -489,43 +601,80 @@ class PrepRenderer(BaseRenderer):
     PAGE_HOLD_SECS: float = 5.0     # seconds each page is held; total pilot window = pages × this
     WIPE_SECS: float = 0.4          # wipe transition duration
 
+    # Timer-view ticker constants
+    _TICKER_SPEED: float = 30.0     # pixels per second for the task-name marquee
+    _SPLEEN16_CHAR_W: int = 16      # monospace horizontal advance for spleen-16x32
+    _SPLEEN12_CHAR_W: int = 12      # monospace horizontal advance for spleen-12x24
+
     def __init__(self, fonts: FontLibrary, config: DisplayConfig,
                  registry: PilotRegistry, pilot_list: PilotListStore) -> None:
         super().__init__(fonts, config)
         self._registry = registry
         self._pilot_list = pilot_list
+        self._last_task_name: str = ""    # used by _timer_show_secs()
+        # Ticker sync — reset each time the timer view becomes visible so the
+        # full task name always scrolls from the right edge on entry.
+        self._in_timer_view: bool = False
+        self._timer_view_start: float = 0.0
+        self._last_sync_round: str = ""
+        self._last_sync_group: str = ""
 
     # ------------------------------------------------------------------
     # BaseRenderer interface
     # ------------------------------------------------------------------
 
     def render(self, canvas, data: TimingData) -> None:
+        # Reset ticker sync whenever the flying group changes so the task-name
+        # ticker always starts from the right edge for each new group.
+        if (data.round_num != self._last_sync_round
+                or data.group_letter != self._last_sync_group):
+            self._in_timer_view = False
+            self._last_sync_round = data.round_num
+            self._last_sync_group = data.group_letter
+
         if self._pilot_list.pilot_ids:
+            timer_show = self._timer_show_secs()
             pilot_show_secs = self._pilot_show_secs()
-            display_cycle = pilot_show_secs + self.TIMER_SHOW_SECS
+            display_cycle = timer_show + pilot_show_secs
             cycle_pos = self._pilot_list.age() % display_cycle
-            if cycle_pos < pilot_show_secs:
+            if cycle_pos < timer_show:
+                # Timer view is first in the cycle — lets pilot data load.
+                if not self._in_timer_view:
+                    self._timer_view_start = time.time()
+                    self._in_timer_view = True
+                self._render_timer(canvas, data)
+            else:
+                # Pilot-list phase: clear flag so ticker restarts on re-entry.
+                self._in_timer_view = False
+                pilot_pos = cycle_pos - timer_show
                 pages = self._pages()
                 if len(pages) > 1:
-                    self._render_paged(canvas, data, pages)
+                    self._render_paged(canvas, data, pages, pilot_pos)
                 else:
                     self._render_page(canvas, data, pages[0] if pages else [],
                                       x_offset=0)
-            else:
-                self._render_timer(canvas, data)
         else:
+            if not self._in_timer_view:
+                self._timer_view_start = time.time()
+                self._in_timer_view = True
             self._render_timer(canvas, data)
 
     def needs_render(self) -> bool:
-        """True while a page-wipe is in progress within the pilot-list window."""
-        if not self._pilot_list.pilot_ids or len(self._pages()) <= 1:
-            return False
+        """True during page-wipe transitions and whenever the timer view is
+        active (the scrolling task-name ticker requires continuous animation)."""
+        if not self._pilot_list.pilot_ids:
+            return True  # always showing the animated timer/ticker view
+        timer_show = self._timer_show_secs()
         pilot_show_secs = self._pilot_show_secs()
-        display_cycle = pilot_show_secs + self.TIMER_SHOW_SECS
+        display_cycle = timer_show + pilot_show_secs
         cycle_pos = self._pilot_list.age() % display_cycle
-        if cycle_pos >= pilot_show_secs:
-            return False  # currently showing the timer — no animation needed
-        page_cycle_pos = cycle_pos % (self.PAGE_HOLD_SECS + self.WIPE_SECS)
+        if cycle_pos < timer_show:
+            return True  # timer/ticker view phase — ticker must animate
+        # Pilot-list phase: animate only during page-wipe transitions
+        if len(self._pages()) <= 1:
+            return False
+        pilot_pos = cycle_pos - timer_show
+        page_cycle_pos = pilot_pos % (self.PAGE_HOLD_SECS + self.WIPE_SECS)
         return page_cycle_pos >= self.PAGE_HOLD_SECS
 
     # ------------------------------------------------------------------
@@ -547,28 +696,53 @@ class PrepRenderer(BaseRenderer):
         n = len(self._pages())
         return n * self.PAGE_HOLD_SECS + (n - 1) * self.WIPE_SECS
 
+    def _timer_show_secs(self) -> float:
+        """Seconds the timer view occupies per display cycle.
+
+        Computed so one complete scroll of the last seen task name always
+        fits inside the timer window, with TIMER_SHOW_SECS as the minimum.
+        """
+        text_w = len(self._last_task_name) * self._SPLEEN16_CHAR_W
+        scroll_time = (self._cfg.display_width + text_w) / self._TICKER_SPEED
+        return max(scroll_time, self.TIMER_SHOW_SECS)
+
     def _render_timer(self, canvas, data: TimingData) -> None:
+        w = self._cfg.display_width   # 96
         color = graphics.Color(0, 255, 255)
-        self._draw_large_time(canvas, data.time_minutes, data.time_seconds, color)
+        self._last_task_name = data.task_name
+
+        # ---- Scrolling task-name ticker (spleen-16x32, baseline y=29) -------
+        # At y=29 the 32 px characters are visible in rows ~9-28 (20 px strip
+        # below the header), scrolling the full task name continuously left.
+        spleen16 = self._fonts.get("spleen-16x32")
+        task = data.task_name
+        text_w = len(task) * self._SPLEEN16_CHAR_W
+        total_scroll = w + text_w
+        elapsed = time.time() - self._timer_view_start
+        x_task = w - int(elapsed * self._TICKER_SPEED % total_scroll)
+        graphics.DrawText(canvas, spleen16, x_task, 29, color, task)
+
+        # ---- Timer MM:SS (spleen-12x24, baseline y=48, bottom of display) ---
+        # At y=48 the 24 px font fills rows 25-47 (23 px), cleanly below the
+        # ticker strip with no overlap.
+        spleen12 = self._fonts.get("spleen-12x24")
+        timer_x = (w - len(data.time_s) * self._SPLEEN12_CHAR_W) // 2
+        graphics.DrawText(canvas, spleen12, timer_x, 47, color, data.time_s)
+
+        # ---- Header drawn last so it always sits on top --------------------
         self._draw_header(canvas, "PREP", self._round_group_label(data), color)
-        self._draw_task_name(canvas, data.task_name)
 
     def _render_paged(self, canvas, data: TimingData,
-                      pages: List[List[str]]) -> None:
+                      pages: List[List[str]], pilot_pos: float) -> None:
         """Render the correct page; animate a horizontal wipe when transitioning.
 
-        Uses the position within the current *pilot-list window* (0…pilot_show_secs)
-        so that page cycling always restarts from page 0 each time the pilot
-        list re-appears after the timer interlude.
+        ``pilot_pos`` is the elapsed seconds since the pilot-list phase began
+        (i.e. ``cycle_pos - timer_show``) so page cycling always restarts from
+        page 0 at the start of each pilot-list window.
         """
-        pilot_show_secs = self._pilot_show_secs()
-        display_cycle = pilot_show_secs + self.TIMER_SHOW_SECS
-        # Position within the current pilot-list window (0 … pilot_show_secs)
-        pilot_age = self._pilot_list.age() % display_cycle
-
         page_cycle = self.PAGE_HOLD_SECS + self.WIPE_SECS
-        page_idx = int(pilot_age / page_cycle) % len(pages)
-        page_cycle_pos = pilot_age % page_cycle
+        page_idx = int(pilot_pos / page_cycle) % len(pages)
+        page_cycle_pos = pilot_pos % page_cycle
 
         if page_cycle_pos < self.PAGE_HOLD_SECS:
             # Steady state — show current page
@@ -601,17 +775,18 @@ class PrepRenderer(BaseRenderer):
 
         font_hdr = self._fonts.get("6x12")
         font_name = self._fonts.get("6x9")
+        
 
         graphics.DrawText(canvas, font_hdr, x_offset, self._cfg.header_y,
                           graphics.Color(255, 255, 0), "Pilots")
-        if total_pages > 1:
-            page_label = f"{page_num + 1}/{total_pages}"
-            graphics.DrawText(canvas, font_hdr, x_offset + 40, self._cfg.header_y,
-                              graphics.Color(200, 200, 200), page_label)
-        else:
-            graphics.DrawText(canvas, font_hdr, x_offset + 40, self._cfg.header_y,
-                              graphics.Color(255, 255, 255),
-                              self._round_group_label(data))
+        #if total_pages > 1:
+        page_label = f"{page_num + 1}/{total_pages}"
+        graphics.DrawText(canvas, font_hdr, x_offset + 40, self._cfg.header_y,
+                            graphics.Color(200, 200, 200), page_label)
+        #else:
+        #    graphics.DrawText(canvas, font_hdr, x_offset + 40, self._cfg.header_y,
+        #                      graphics.Color(255, 255, 255),
+        #                      self._round_group_label(data))
 
         y = self._cfg.pilot_list_start_y
         for pid in pilot_ids:
@@ -632,13 +807,44 @@ class NoFlyRenderer(BaseRenderer):
 
 
 class WorkRenderer(BaseRenderer):
-    """Working window countdown (green)."""
+    """Working window countdown (green) — full-height MM:SS in spleen-22x64.
+
+    Layout on the 96-column display (DWIDTH=24 per glyph):
+      x= 0.. 47   minutes  (M1 @ 0, M2 @ 24; ink ends at x=45)
+      x=46.. 49   colon dots (two 4×4 px rectangles in the 4-px gap)
+      x=50.. 95   seconds  (S1 @ 50, S2 @ 74; ink ends at x=95)
+
+    The seconds are shifted 2 px right relative to the natural x=48 position,
+    creating a 4-px gap for the colon rectangles without otherwise changing
+    glyph widths or spacing.
+
+    Colon dot y-positions are chosen to sit at roughly 1/3 and 2/3 of the
+    visible character body (display rows 9–47 for this font at baseline y=48).
+    """
+
+    # Colon rectangle geometry (x1, x2 inclusive; y1, y2 inclusive per dot)
+    _DOT_X1:     int = 47
+    _DOT_X2:     int = 48
+    _DOT_TOP_Y1: int = 18
+    _DOT_TOP_Y2: int = 21
+    _DOT_BOT_Y1: int = 33
+    _DOT_BOT_Y2: int = 36
 
     def render(self, canvas, data: TimingData) -> None:
+        font  = self._fonts.get("spleen-22x64")
         color = graphics.Color(0, 255, 0)
-        self._draw_large_time(canvas, data.time_minutes, data.time_seconds, color)
-        self._draw_header(canvas, "WORK", self._round_group_label(data), color)
-        self._draw_task_name(canvas, data.task_name)
+
+        # Minutes (MM)
+        graphics.DrawText(canvas, font, 0, 43, color, data.time_minutes)
+
+        # Colon: two filled rectangles drawn as horizontal spans
+        for y in range(self._DOT_TOP_Y1, self._DOT_TOP_Y2 + 1):
+            graphics.DrawLine(canvas, self._DOT_X1, y, self._DOT_X2, y, color)
+        for y in range(self._DOT_BOT_Y1, self._DOT_BOT_Y2 + 1):
+            graphics.DrawLine(canvas, self._DOT_X1, y, self._DOT_X2, y, color)
+
+        # Seconds (SS) — shifted 2 px right of the natural x=48 position
+        graphics.DrawText(canvas, font, 50, 43, color, data.time_seconds)
 
 
 class LandRenderer(BaseRenderer):
@@ -817,10 +1023,19 @@ class MatrixDisplayApp:
 
     def _load_fonts(self) -> None:
         font_map = {
-            "time":  "matrix_time-40.bdf",
-            "6x12":  "clR6x12.bdf",
-            "6x9":   "6x9.bdf",
-            "9x18B": "9x18B.bdf",
+            "time":    "matrix_time-40.bdf",
+            "6x12":    "clR6x12.bdf",
+            "6x9":     "6x9.bdf",
+            "9x18B":   "9x18B.bdf",
+            "10x32B-32": "10x32B-32.bdf",  # 32 px tall bold, monospace, full ASCII
+            "spleen-12x24": "spleen-12x24.bdf",  # 24 px monospace, full ASCII
+            "spleen-16x32": "spleen-16x32.bdf",  # 32 px monospace, full ASCII
+            "spleen-24x48": "spleen-24x48.bdf",  # 48 px monospace, full ASCII
+            "spleen-20x64": "spleen-20x64.bdf",  # 64 px tall, 20 px ink + 2 px right pad, digits+colon
+            "spleen-22x64": "spleen-22x64.bdf",  # 64 px tall, 22 px ink + 2 px right pad, digits+colon
+            "spleen-24x64": "spleen-24x64.bdf",  # 64 px tall, 24 px wide, digits+colon only
+            "spleen-28x64": "spleen-28x64.bdf",  # 64 px monospace, full ASCII
+            "spleen-32x64": "spleen-32x64.bdf",  # 64 px monospace, full ASCII
         }
         for name, filename in font_map.items():
             self._fonts.load(name, filename)
@@ -984,7 +1199,24 @@ class MatrixDisplayApp:
                     self._render_and_swap(self._active_renderer, self._active_data)
                 time.sleep(0.016)
 
-        self._serial.connect()
+        # Open the serial port.  If the port is not available, keep retrying
+        # every startup_delay seconds (minimum 1 s) while the boot animation
+        # continues to play.
+        retry_interval = max(self._startup_delay, 1.0)
+        while True:
+            try:
+                self._serial.connect()
+                break
+            except serial.SerialException as exc:
+                logger.warning(
+                    "Serial port unavailable (%s) — retrying in %.0f s",
+                    exc, retry_interval,
+                )
+                deadline = time.time() + retry_interval
+                while time.time() < deadline:
+                    if self._active_renderer is not None and self._active_renderer.needs_render():
+                        self._render_and_swap(self._active_renderer, self._active_data)
+                    time.sleep(0.016)
 
         no_data_displayed = False
         was_animating = False   # tracks whether the previous iteration was animating
@@ -996,56 +1228,60 @@ class MatrixDisplayApp:
                 self._show_no_data_screen()
                 no_data_displayed = True
 
-            # -- Wait for data (small sleep avoids CPU spin when idle) ----
-            if not self._serial.has_data():
-                # Drive animation frames (e.g. pilot-list page wipes) even
-                # when no new serial packet has arrived.
-                #
-                # When needs_render() goes False we render ONE extra frame so
-                # the display lands cleanly at the fully-completed wipe position
-                # rather than freezing a few pixels short of the destination
-                # (was_animating catches the True→False transition).
-                animating = (self._active_renderer is not None
-                             and self._active_renderer.needs_render())
-                if animating or was_animating:
-                    if self._active_renderer is not None:
-                        self._render_and_swap(self._active_renderer, self._active_data)
-                    time.sleep(0.016)  # cap at ~60 fps
-                else:
-                    time.sleep(0.01)
-                was_animating = animating
-                continue
+            # -- Read and dispatch any waiting packet ---------------------
+            # Only read when bytes are already in the buffer so we never
+            # block the loop on readline().  At most one packet is consumed
+            # per iteration; if more are buffered they drain on the next
+            # tick, which is fine at typical serial rates (≤ 20 Hz).
+            if self._serial.has_data():
+                packet = self._serial.read_json()
+                if packet is not None:
+                    msg_type = packet.get("t")
+                    payload = packet.get("d")
 
-            # -- Read and parse packet ------------------------------------
-            packet = self._serial.read_json()
-            if packet is None:
-                continue
+                    if msg_type is None or payload is None:
+                        self._log.warning(
+                            "Malformed packet (missing 't' or 'd'): %s", packet
+                        )
+                    else:
+                        # Reset no-data state on any valid packet
+                        self._last_data_time = time.time()
+                        if no_data_displayed:
+                            logger.info("Serial data resumed")
+                            no_data_displayed = False
 
-            msg_type = packet.get("t")
-            payload = packet.get("d")
+                        # -- Dispatch -------------------------------------
+                        if msg_type == "time":
+                            self._handle_time_packet(payload)
+                        elif msg_type == "p_def":
+                            self._handle_pilot_def(payload)
+                        elif msg_type == "p_list":
+                            self._handle_pilot_list(payload)
+                        else:
+                            self._log.info(
+                                "Unrecognised packet type '%s'", msg_type
+                            )
 
-            if msg_type is None or payload is None:
-                self._log.warning("Malformed packet (missing 't' or 'd'): %s", packet)
-                continue
+            # -- Drive animation frames ----------------------------------
+            # Executed every iteration regardless of whether a packet
+            # arrived so animations (ticker, page-wipes, boot graphics)
+            # remain smooth even while serial data is flowing.
+            #
+            # The was_animating flag ensures one extra frame is rendered
+            # when needs_render() transitions True→False so the display
+            # settles cleanly at the fully-completed position.
+            animating = (self._active_renderer is not None
+                         and self._active_renderer.needs_render())
+            if animating or was_animating:
+                if self._active_renderer is not None:
+                    self._render_and_swap(self._active_renderer, self._active_data)
+            was_animating = animating
 
-            # Reset no-data state on any valid packet
-            self._last_data_time = time.time()
-            if no_data_displayed:
-                logger.info("Serial data resumed")
-                no_data_displayed = False
-
-            # -- Dispatch -------------------------------------------------
-            if msg_type == "time":
-                self._handle_time_packet(payload)
-
-            elif msg_type == "p_def":
-                self._handle_pilot_def(payload)
-
-            elif msg_type == "p_list":
-                self._handle_pilot_list(payload)
-
-            else:
-                self._log.info("Unrecognised packet type '%s'", msg_type)
+            # -- Always sleep to bound CPU usage -------------------------
+            # Prevents tight-spin in every code path (data flowing, None
+            # reads, and idle).  16 ms ≈ 60 fps when animating; 10 ms is
+            # more than sufficient when the display is static.
+            time.sleep(0.016 if animating else 0.010)
 
 
 # ---------------------------------------------------------------------------
@@ -1058,7 +1294,7 @@ def main() -> None:
         #baud_rate=19200,
         port="COM4",
         baud_rate=19200,
-        startup_delay=3.0,
+        startup_delay=2.0,
         timeout=0.3,
     )
     matrix_config = MatrixConfig(

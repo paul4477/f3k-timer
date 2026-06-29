@@ -244,6 +244,40 @@ def DrawText(
 
 
 # ---------------------------------------------------------------------------
+# DrawLine
+# ---------------------------------------------------------------------------
+
+def DrawLine(
+    canvas: "SimCanvas",
+    x1: int, y1: int,
+    x2: int, y2: int,
+    color: Color,
+) -> None:
+    """Drop-in replacement for ``rgbmatrix.graphics.DrawLine``.
+
+    Draws a straight line from (x1, y1) to (x2, y2) using Bresenham's
+    line algorithm.
+    """
+    dx = abs(x2 - x1)
+    dy = abs(y2 - y1)
+    sx = 1 if x1 < x2 else -1
+    sy = 1 if y1 < y2 else -1
+    err = dx - dy
+    x, y = x1, y1
+    while True:
+        canvas.SetPixel(x, y, color.r, color.g, color.b)
+        if x == x2 and y == y2:
+            break
+        e2 = 2 * err
+        if e2 > -dy:
+            err -= dy
+            x += sx
+        if e2 < dx:
+            err += dx
+            y += sy
+
+
+# ---------------------------------------------------------------------------
 # Thin 'graphics' namespace object  (mirrors  from rgbmatrix import graphics)
 # ---------------------------------------------------------------------------
 
@@ -251,6 +285,7 @@ class _Graphics:
     Color = Color
     Font = Font
     DrawText = staticmethod(DrawText)
+    DrawLine = staticmethod(DrawLine)
 
 
 graphics = _Graphics()
