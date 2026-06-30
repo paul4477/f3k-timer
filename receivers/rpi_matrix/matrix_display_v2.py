@@ -18,7 +18,6 @@ Refactored to use an object-oriented architecture with:
 
 import json
 import logging
-import math
 import sys
 import time
 from abc import ABC, abstractmethod
@@ -399,84 +398,105 @@ class BaseRenderer(ABC):
 class BootRenderer(BaseRenderer):
     """Splash screen shown at startup before any serial data is received.
 
-    Renders a composite animation:
-      - Rainbow-coloured expanding concentric rectangles from the display centre
-      - Slowly tumbling diagonal lines through the centre
-      - 'Superfly' title and 'Display Ready' text overlaid in white
+    Renders a sequential animation:
+      Phase 1: A horizontal line bounces top→bottom then bottom→top,
+               each pass with a 3-pixel trail (white / 75% / 50% gray).
+      Phase 2: A vertical line bounces left→right then right→left,
+               same trail style.
+      Phase 3: The 'Superfly' title fades in from black to full white (2 s).
 
-    Uses ``graphics.DrawLine`` for all line/rectangle drawing.  The animation
-    runs continuously (needs_render → True) so the startup-delay loop keeps
-    refreshing the display at ~60 fps.
+    After the animation completes the title holds at full brightness.
+    The animation runs continuously (needs_render → True).
     """
 
-    _N_RECTS: int = 5          # number of concentric expanding rectangles
-    _RECT_SPEED: float = 0.4   # expand cycles per second
-    _N_LINES: int = 4          # number of tumbling lines
-    _LINE_SPEED: float = 0.12  # full rotations per second
-    _HUE_SPEED: float = 0.08   # rainbow hue cycles per second
+    # Trail colours: lead pixel, -1, -2 behind the sweep direction
+    _TRAIL: tuple = (255, 191, 128)   # white, 75% gray, 50% gray
 
-    @staticmethod
-    def _hsv_to_rgb(h: float, s: float = 1.0, v: float = 1.0):
-        """Convert HSV (h in [0, 1)) to an (r, g, b) tuple each in [0, 255]."""
-        h6 = (h % 1.0) * 6.0
-        i = int(h6)
-        f = h6 - i
-        p = v * (1.0 - s)
-        q = v * (1.0 - s * f)
-        t = v * (1.0 - s * (1.0 - f))
-        rgb = [
-            (v, t, p), (q, v, p), (p, v, t),
-            (p, q, v), (t, p, v), (v, p, q),
-        ][i % 6]
-        return (int(rgb[0] * 255), int(rgb[1] * 255), int(rgb[2] * 255))
+    _PASS_DURATION: float = 0.8   # seconds for one sweep pass
+    _PHASE1_DURATION: float = _PASS_DURATION * 2   # two passes (down + up)
+    _PHASE2_DURATION: float = _PASS_DURATION * 2   # two passes (right + left)
+    _PHASE3_DURATION: float = 5.0                  # text fade-in
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._start_time: Optional[float] = None
 
     def needs_render(self) -> bool:
         return True
 
+    @staticmethod
+    def _draw_h_sweep(canvas, w: int, h: int, progress: float, trail: tuple) -> None:
+        """Draw a horizontal sweep line at *progress* [0,1] top→bottom."""
+        y_cur = int(progress * (h - 1))
+        for d, bri in enumerate(trail):
+            y = y_cur - d
+            if y < 0:
+                break
+            graphics.DrawLine(canvas, 0, y, w - 1, y, graphics.Color(bri, bri, bri))
+
+    @staticmethod
+    def _draw_v_sweep(canvas, w: int, h: int, progress: float, trail: tuple) -> None:
+        """Draw a vertical sweep line at *progress* [0,1] left→right."""
+        x_cur = int(progress * (w - 1))
+        for d, bri in enumerate(trail):
+            x = x_cur - d
+            if x < 0:
+                break
+            graphics.DrawLine(canvas, x, 0, x, h - 1, graphics.Color(bri, bri, bri))
+
     def render(self, canvas, data) -> None:
         w = self._cfg.display_width   # 96
         h = self._cfg.display_height  # 48
-        cx = w // 2
-        cy = h // 2
-        t = time.time()
 
-        # ---- Expanding concentric rectangles --------------------------------
-        # Each rectangle expands from the centre outward and wraps around;
-        # they are spaced evenly through the cycle so there are always
-        # _N_RECTS rings on screen at once.
-        max_half = max(cx, cy) + 4
-        for i in range(self._N_RECTS):
-            phase = ((t * self._RECT_SPEED) + i / self._N_RECTS) % 1.0
-            half = int(phase * max_half)
-            if half < 1:
-                continue
-            hue = (t * self._HUE_SPEED + i / self._N_RECTS) % 1.0
-            col = graphics.Color(*self._hsv_to_rgb(hue))
-            x1, y1 = cx - half, cy - half
-            x2, y2 = cx + half, cy + half
-            graphics.DrawLine(canvas, x1, y1, x2, y1, col)  # top
-            graphics.DrawLine(canvas, x1, y2, x2, y2, col)  # bottom
-            graphics.DrawLine(canvas, x1, y1, x1, y2, col)  # left
-            graphics.DrawLine(canvas, x2, y1, x2, y2, col)  # right
+        if self._start_time is None:
+            self._start_time = time.time()
 
-        # ---- Tumbling diagonal lines ----------------------------------------
-        # Each line rotates slowly through the centre; lines are evenly spread
-        # in angle and use complementary hues to the rectangles.
-        for i in range(self._N_LINES):
-            angle = (t * self._LINE_SPEED * 2.0 * math.pi
-                     + i * math.pi / self._N_LINES)
-            dx = int(math.cos(angle) * cx * 1.1)
-            dy = int(math.sin(angle) * cy * 1.1)
-            hue = (t * self._HUE_SPEED + 0.5 + i / self._N_LINES) % 1.0
-            col = graphics.Color(*self._hsv_to_rgb(hue, 0.8, 0.85))
-            graphics.DrawLine(canvas, cx - dx, cy - dy, cx + dx, cy + dy, col)
+        elapsed = time.time() - self._start_time
+        t1 = self._PHASE1_DURATION
+        t2 = t1 + self._PHASE2_DURATION
+        t3 = t2 + self._PHASE3_DURATION
 
-        # ---- Text overlay ---------------------------------------------------
-        title_font = self._fonts.get("spleen-12x24")
-        sub_font   = self._fonts.get("6x9")
-        graphics.DrawText(canvas, title_font,
-                          self._cfg.boot_title_x, self._cfg.boot_title_y,
-                          graphics.Color(255, 255, 255), "Superfly")
+        if elapsed < t1:
+            # Phase 1: horizontal bouncing wipe
+            pass_progress = (elapsed % self._PASS_DURATION) / self._PASS_DURATION
+            pass_num = int(elapsed / self._PASS_DURATION)
+            if pass_num % 2 == 0:
+                # top → bottom: trail is above the line
+                self._draw_h_sweep(canvas, w, h, pass_progress, self._TRAIL)
+            else:
+                # bottom → top: trail is below the line, flip progress
+                self._draw_h_sweep(canvas, w, h, 1.0 - pass_progress,
+                                   self._TRAIL[::-1])
+
+        elif elapsed < t2:
+            # Phase 2: vertical bouncing wipe
+            phase_elapsed = elapsed - t1
+            pass_progress = (phase_elapsed % self._PASS_DURATION) / self._PASS_DURATION
+            pass_num = int(phase_elapsed / self._PASS_DURATION)
+            if pass_num % 2 == 0:
+                # left → right: trail is to the left of the line
+                self._draw_v_sweep(canvas, w, h, pass_progress, self._TRAIL)
+            else:
+                # right → left: trail is to the right, flip progress
+                self._draw_v_sweep(canvas, w, h, 1.0 - pass_progress,
+                                   self._TRAIL[::-1])
+
+        elif elapsed < t3:
+            # Phase 3: fade in Superfly text over 2 s
+            fade = (elapsed - t2) / self._PHASE3_DURATION
+            bri = int(fade * 255)
+            title_font = self._fonts.get("spleen-12x24")
+            graphics.DrawText(canvas, title_font,
+                              self._cfg.boot_title_x, self._cfg.boot_title_y,
+                              graphics.Color(bri, bri, bri), "Superfly")
+
+        else:
+            # Hold final state — title at full brightness
+            title_font = self._fonts.get("spleen-12x24")
+            graphics.DrawText(canvas, title_font,
+                              self._cfg.boot_title_x, self._cfg.boot_title_y,
+                              graphics.Color(255, 255, 255), "Superfly")
+            self._draw_knight_rider(canvas)
 
 
 class NoDataRenderer(BaseRenderer):
@@ -492,12 +512,12 @@ class NoDataRenderer(BaseRenderer):
         graphics.DrawText(canvas, title_font,
                           self._cfg.boot_title_x, self._cfg.boot_title_y,
                           graphics.Color(255, 255, 255), "Superfly")
-        graphics.DrawText(canvas, sub_font,
-                          self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 27,
-                          graphics.Color(0, 255, 255), "Waiting for")        
-        graphics.DrawText(canvas, sub_font,
-                          self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 27 + 10,
-                          graphics.Color(0, 255, 255), "data...")        
+        #graphics.DrawText(canvas, sub_font,
+        #                  self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 27,
+        #                  graphics.Color(0, 255, 255), "Waiting for")        
+        #graphics.DrawText(canvas, sub_font,
+        #                  self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 27 + 10,
+        #                  graphics.Color(0, 255, 255), "data...")        
 
         self._draw_knight_rider(canvas)
 
