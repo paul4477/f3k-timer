@@ -47,7 +47,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 logging.basicConfig(
     stream=sys.stderr,
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s %(name)s %(levelname)s %(message)s",
 )
 logger = logging.getLogger(__name__)
@@ -60,11 +60,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SerialConfig:
     """Serial port connection parameters."""
-    #port: str = "/dev/ttyUSB0"
-    port: str = "COM4"
-    baud_rate: int = 115200 #19200
+    port: str = "/dev/ttyUSB0"
+    baud_rate: int = 19200
     timeout: float = 0.3
     startup_delay: float = 0.0       # seconds to wait before opening the port
+    retry_count: int = 10            # number of open attempts before giving up (0 = unlimited)
+    retry_delay: float = 3.0         # seconds between retry attempts
 
 
 @dataclass
@@ -90,7 +91,7 @@ class DisplayConfig:
     no_data_timeout: float = 30.0        # seconds before showing no-data screen
     pilot_list_display_time: float = 15.0  # seconds to hold pilot list display
     time_row_y: int = 48                 # y-baseline for the large time font
-    colon_x: int = 41                   # x-position of the colon separator
+    colon_x: int = 45                  # x-position of the colon separator
     colon_y: int = 43
     time_sec_x: int = 50                # x-position of the seconds digits
     time_sec_y: int = 48
@@ -222,6 +223,10 @@ class MatrixController:
         options.pwm_lsb_nanoseconds = self._config.pwm_lsb_nanoseconds
         options.pwm_bits = self._config.pwm_bits
         options.hardware_mapping = self._config.hardware_mapping
+        # Prevent the library from dropping root → daemon privileges on init.
+        # Without this, file descriptors opened after RGBMatrix() (e.g. serial
+        # ports) may fail because the process is no longer running as root.
+        options.drop_privileges = False
         try:
             self._matrix = RGBMatrix(options=options)
             self._canvas = self._matrix.CreateFrameCanvas()
@@ -506,19 +511,10 @@ class NoDataRenderer(BaseRenderer):
         return True
 
     def render(self, canvas, data) -> None:
-        #title_font = self._fonts.get("9x18B")
         title_font = self._fonts.get("spleen-12x24")
-        sub_font = self._fonts.get("6x9")
         graphics.DrawText(canvas, title_font,
                           self._cfg.boot_title_x, self._cfg.boot_title_y,
                           graphics.Color(255, 255, 255), "Superfly")
-        #graphics.DrawText(canvas, sub_font,
-        #                  self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 27,
-        #                  graphics.Color(0, 255, 255), "Waiting for")        
-        #graphics.DrawText(canvas, sub_font,
-        #                  self._cfg.boot_title_x + 3, self._cfg.boot_subtitle_y + 27 + 10,
-        #                  graphics.Color(0, 255, 255), "data...")        
-
         self._draw_knight_rider(canvas)
 
 
@@ -566,7 +562,7 @@ class AnnouncementRenderer(BaseRenderer):
 
     # spleen-32x64: every character is exactly 32 px wide.
     _CHAR_W: int = 32
-    _VALUE_Y: int = 45   # baseline at display bottom; 64 px tall font fills full height
+    _VALUE_Y: int = 43   # baseline at display bottom; 64 px tall font fills full height
 
     def render(self, canvas, data: TimingData) -> None:
         font_large = self._fonts.get("spleen-32x64")
@@ -921,21 +917,55 @@ class SerialReader:
     def __init__(self, config: SerialConfig) -> None:
         self._config = config
         self._port: Optional[serial.Serial] = None
+        self._rx_buffer: str = ""
 
-    def connect(self) -> None:
-        """Open the serial port.  Raises serial.SerialException on failure."""
-        try:
-            self._port = serial.Serial(
-                self._config.port,
-                self._config.baud_rate,
-                timeout=self._config.timeout,
-            )
-            logger.info("Opened serial port %s at %d baud",
-                        self._config.port, self._config.baud_rate)
-        except serial.SerialException as exc:
-            logger.error("Cannot open serial port '%s': %s",
-                         self._config.port, exc)
-            raise
+    def connect(self, on_retry_wait=None) -> None:
+        """Open the serial port, retrying on failure.
+
+        Attempts up to ``config.retry_count`` times (0 = unlimited) with
+        ``config.retry_delay`` seconds between each attempt.  Raises
+        ``serial.SerialException`` if all attempts are exhausted.
+
+        ``on_retry_wait``, if provided, is called repeatedly (with no
+        arguments) throughout each retry delay instead of blocking with
+        ``time.sleep``.  Useful for driving display animations while waiting.
+        """
+        attempt = 0
+        while True:
+            attempt += 1
+            try:
+                self._port = serial.Serial(
+                    self._config.port,
+                    self._config.baud_rate,
+                    timeout=self._config.timeout,
+                )
+                logger.info(
+                    "Opened serial port %s at %d baud (attempt %d)",
+                    self._config.port, self._config.baud_rate, attempt,
+                )
+                return
+            except serial.SerialException as exc:
+                limit = self._config.retry_count
+                if limit and attempt >= limit:
+                    logger.error(
+                        "Cannot open serial port '%s' after %d attempt(s): %s",
+                        self._config.port, attempt, exc,
+                    )
+                    raise
+                logger.warning(
+                    "Serial port '%s' not ready (attempt %d%s): %s — retrying in %.1f s",
+                    self._config.port,
+                    attempt,
+                    f"/{limit}" if limit else "",
+                    exc,
+                    self._config.retry_delay,
+                )
+                if on_retry_wait is not None:
+                    deadline = time.time() + self._config.retry_delay
+                    while time.time() < deadline:
+                        on_retry_wait()
+                else:
+                    time.sleep(self._config.retry_delay)
 
     def disconnect(self) -> None:
         if self._port and self._port.is_open:
@@ -943,7 +973,9 @@ class SerialReader:
             logger.info("Serial port %s closed", self._config.port)
 
     def has_data(self) -> bool:
-        """Return True if at least one byte is waiting in the input buffer."""
+        """Return True if data is available in the serial port or the internal parser buffer."""
+        if "\n" in self._rx_buffer:
+            return True
         try:
             return bool(self._port and self._port.in_waiting > 0)
         except serial.SerialException as exc:
@@ -952,44 +984,71 @@ class SerialReader:
 
     def read_json(self) -> Optional[dict]:
         """
-        Read one line from the serial port and return its parsed JSON object.
-        Returns None on decode error, JSON error, serial error, or empty line.
+        Read serial data and return one complete JSON object.
+
+        Packets are newline-delimited JSON.  Bytes are accumulated in an
+        internal buffer; complete lines are extracted and decoded one at a
+        time.  This correctly handles packets whose "d" value is an array
+        (e.g. p_list) which do not end with the "}}" sequence.
         """
         if not self._port:
             return None
-        raw = b""
+
+        # Pull any waiting bytes into the internal buffer.
         try:
-            raw = self._port.readline()
+            waiting = self._port.in_waiting
+            if waiting > 0:
+                raw = self._port.read(waiting)
+                if raw:
+                    self._rx_buffer += raw.decode("utf-8", errors="ignore").replace("\x00", "")
         except serial.SerialException as exc:
             logger.error("Serial read error: %s", exc)
             return None
 
-        if not raw:
+        # Keep buffer bounded if bad data arrives for a long time.
+        if len(self._rx_buffer) > 8192:
+            logger.warning("Serial parser buffer grew too large; clearing buffer")
+            self._rx_buffer = ""
             return None
 
-        try:
-            line = raw.decode("utf-8").rstrip()
-        except UnicodeDecodeError as exc:
-            logger.warning("Could not decode serial bytes as UTF-8: %s", exc)
-            return None
+        # Process the first complete newline-terminated line.
+        while "\n" in self._rx_buffer:
+            line, self._rx_buffer = self._rx_buffer.split("\n", 1)
+            line = line.strip()
 
-        if not line:
-            return None
+            if not line:
+                continue
 
-        logger.debug("Serial RX: %s", line)
+            # Discard any leading non-JSON garbage (e.g. boot messages).
+            start = line.find("{")
+            if start < 0:
+                logger.debug("Discarding non-JSON line: %r", line)
+                continue
+            if start > 0:
+                logger.debug("Discarding prefix before JSON: %r", line[:start])
+                line = line[start:]
 
-        try:
-            return json.loads(line)
-        except json.JSONDecodeError as exc:
-            logger.warning("JSON parse error on line '%s': %s", line, exc)
-            return None
+            try:
+                packet = json.loads(line)
+            except json.JSONDecodeError as exc:
+                logger.warning("Bad JSON packet discarded %r: %s", line, exc)
+                continue
+
+            if not isinstance(packet, dict):
+                logger.warning("Ignoring non-object JSON packet: %r", packet)
+                continue
+
+            logger.debug("Serial RX JSON: %s", packet)
+            return packet
+
+        return None
 
     def flush_input(self) -> None:
-        """Discard any bytes currently in the input buffer."""
+        """Discard bytes currently in the serial input buffer and parser buffer."""
+        self._rx_buffer = ""
         if self._port and self._port.is_open:
             self._port.reset_input_buffer()
             logger.debug("Serial input buffer flushed")
-
 
 # ---------------------------------------------------------------------------
 # Main application
@@ -1021,6 +1080,8 @@ class MatrixDisplayApp:
         self._last_round_num: str = ""
         self._last_group_letter: str = ""
         self._last_data_time: float = 0.0
+        self._serial_connected: bool = False
+        self._serial_connected_at: float = 0.0
 
         # Deduplication: (section, slot_time) pair of the last rendered frame
         self._last_rendered_key: Optional[tuple] = None
@@ -1077,12 +1138,20 @@ class MatrixDisplayApp:
         logger.info("Display routes configured (%d sections)", len(section_renderers))
 
     def initialize(self) -> None:
-        """Load fonts, initialise hardware, and register renderers."""
+        """Initialise the RGB matrix, load fonts, and open the serial port.
+
+        RGBMatrixOptions.drop_privileges is set to False in MatrixController so
+        the library does not switch the process from root → daemon during init.
+        This means the serial port can safely be opened after the matrix.
+        """
         logger.info("Initialising MatrixDisplayApp")
+
+        # Initialise display hardware first (drop_privileges=False keeps root).
         self._load_fonts()
         self._matrix.initialize()
         self._setup_routes()
-        # Serial port is opened in run() so the boot animation plays first.
+        # Serial connection is deferred to run() so the boot animation plays
+        # while the application waits for the serial device to become available.
 
     def shutdown(self) -> None:
         """Release hardware resources."""
@@ -1097,6 +1166,7 @@ class MatrixDisplayApp:
     def _render_and_swap(self, renderer: BaseRenderer, data) -> None:
         self._matrix.clear_canvas()
         renderer.render(self._matrix.canvas, data)
+        self._draw_connection_dot(self._matrix.canvas)
         self._matrix.swap()
 
     def _show_boot_screen(self) -> None:
@@ -1111,6 +1181,52 @@ class MatrixDisplayApp:
         self._render_and_swap(self._no_data_renderer, None)
         logger.warning("No serial data for %.0fs — showing no-data screen",
                        self._display_cfg.no_data_timeout)
+
+    def _get_connection_state(self) -> str:
+        """Derive one of: 'not_connected', 'healthy', 'unhealthy', 'no_data'."""
+        if not self._serial_connected:
+            return "not_connected"
+        if self._last_data_time == 0.0:
+            return "unhealthy"  # connected but no data received yet
+        age = time.time() - self._last_data_time
+        if age < 15.0:
+            return "healthy"
+        elif age < self._display_cfg.no_data_timeout:
+            return "unhealthy"
+        else:
+            return "no_data"
+
+    def _draw_connection_dot(self, canvas) -> None:
+        """Draw a 3×3 status dot at the top-right corner of every rendered frame.
+
+        not_connected → flashing red
+        healthy       → green
+        unhealthy     → flashing green
+        no_data       → flashing orange
+        """
+        state = self._get_connection_state()
+        dot_x = self._display_cfg.display_width - 2
+        dot_y = 0
+        if state == "not_connected":
+            if int(time.time() * 2) % 2 == 0:
+                r, g, b = 255, 0, 0
+            else:
+                return
+        elif state == "healthy":
+            r, g, b = 0, 200, 0
+        elif state == "unhealthy":
+            if int(time.time() * 2) % 2 == 0:
+                r, g, b = 0, 200, 0    # flashing green
+            else:
+                return
+        else:  # no_data
+            if int(time.time() * 2) % 2 == 0:
+                r, g, b = 255, 140, 0
+            else:
+                return
+        for dy in range(2):
+            for dx in range(2):
+                canvas.SetPixel(dot_x + dx, dot_y + dy, r, g, b)
 
     # ------------------------------------------------------------------
     # Packet handlers
@@ -1192,44 +1308,47 @@ class MatrixDisplayApp:
     # ------------------------------------------------------------------
 
     def _is_data_timed_out(self) -> bool:
-        return time.time() - self._last_data_time >= self._display_cfg.no_data_timeout
+        if not self._serial_connected:
+            return False
+        reference = (self._last_data_time if self._last_data_time > 0.0
+                     else self._serial_connected_at)
+        return time.time() - reference >= self._display_cfg.no_data_timeout
 
     def run(self) -> None:
         """
-        Blocking main loop.  Reads serial packets, dispatches them to the
-        appropriate handler, and manages the no-data timeout screen.
+        Blocking main loop.  Shows the boot animation, flushes any stale RX
+        data received during startup, dispatches incoming packets, and manages
+        the no-data timeout screen.
         """
-        self._last_data_time = time.time()   # start the no-data timeout clock
+        # Show the boot animation immediately, before opening the serial port so
+        # the display is live even while waiting for the device to respond.
         self._show_boot_screen()
 
-        # Startup delay — animate the boot screen while waiting for the serial
-        # device to become ready (e.g. a microcontroller that needs time to boot).
+        # Open serial port; animate the boot screen during retry delays so the
+        # display remains active throughout the wait.
+        def _boot_tick() -> None:
+            self._render_and_swap(self._boot_renderer, None)
+            time.sleep(0.016)
+
+        self._serial.connect(on_retry_wait=_boot_tick)
+        self._serial_connected = True
+        self._serial_connected_at = time.time()
+        self._serial.flush_input()
+        logger.info("Serial RX buffer flushed after opening port")
+
+        # Startup delay — animate the boot screen while serial remains open.
+        # Any packets received during this delay are flushed below.
         if self._startup_delay > 0:
-            logger.info("Startup delay: %.1f s", self._startup_delay)
+            logger.info("Startup delay before reading serial: %.1f s", self._startup_delay)
             deadline = time.time() + self._startup_delay
             while time.time() < deadline:
                 if self._active_renderer is not None and self._active_renderer.needs_render():
                     self._render_and_swap(self._active_renderer, self._active_data)
                 time.sleep(0.016)
 
-        # Open the serial port.  If the port is not available, keep retrying
-        # every startup_delay seconds (minimum 1 s) while the boot animation
-        # continues to play.
-        retry_interval = max(self._startup_delay, 1.0)
-        while True:
-            try:
-                self._serial.connect()
-                break
-            except serial.SerialException as exc:
-                logger.warning(
-                    "Serial port unavailable (%s) — retrying in %.0f s",
-                    exc, retry_interval,
-                )
-                deadline = time.time() + retry_interval
-                while time.time() < deadline:
-                    if self._active_renderer is not None and self._active_renderer.needs_render():
-                        self._render_and_swap(self._active_renderer, self._active_data)
-                    time.sleep(0.016)
+        # Flush everything received during startup before entering display loop.
+        self._serial.flush_input()
+        logger.info("Startup serial buffer cleared")
 
         no_data_displayed = False
         was_animating = False   # tracks whether the previous iteration was animating
@@ -1253,9 +1372,12 @@ class MatrixDisplayApp:
                     payload = packet.get("d")
 
                     if msg_type is None or payload is None:
-                        self._log.warning(
-                            "Malformed packet (missing 't' or 'd'): %s", packet
-                        )
+                        if "command" in packet:
+                            self._log.debug("Command packet discarded: %s", packet)
+                        else:
+                            self._log.warning(
+                                "Malformed packet (missing 't' or 'd'): %s", packet
+                            )
                     else:
                         # Reset no-data state on any valid packet
                         self._last_data_time = time.time()
@@ -1283,8 +1405,10 @@ class MatrixDisplayApp:
             # The was_animating flag ensures one extra frame is rendered
             # when needs_render() transitions True→False so the display
             # settles cleanly at the fully-completed position.
-            animating = (self._active_renderer is not None
-                         and self._active_renderer.needs_render())
+            animating = (
+                (self._active_renderer is not None and self._active_renderer.needs_render())
+                or self._get_connection_state() != "healthy"
+            )
             if animating or was_animating:
                 if self._active_renderer is not None:
                     self._render_and_swap(self._active_renderer, self._active_data)
@@ -1304,10 +1428,9 @@ class MatrixDisplayApp:
 def main() -> None:
     serial_config = SerialConfig(
         #port="/dev/ttyUSB0",
-        #baud_rate=19200,
         port="COM4",
         baud_rate=19200,
-        startup_delay=2.0,
+        startup_delay=0.0,
         timeout=0.3,
     )
     matrix_config = MatrixConfig(
