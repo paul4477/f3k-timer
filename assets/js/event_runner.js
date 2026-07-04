@@ -75,6 +75,7 @@ async function handleSetConfigButton() {
   const use_strict_test_time = document.getElementById('use_strict_test_time').checked;
   const competition_start_time = document.getElementById('competition_start_time').value;
   const countdown_to_working_time = document.getElementById('countdown_to_working_time').checked;
+  const COUNTDOWN_TONES = document.getElementById('COUNTDOWN_TONES').checked;
 
   try {
     const response = await fetch('/set_event_config', {
@@ -85,7 +86,8 @@ async function handleSetConfigButton() {
         group_separation_time: parseInt(group_separation_time),
         use_strict_test_time: use_strict_test_time,
         competition_start_time: parseInt(competition_start_time),
-        countdown_to_working_time: countdown_to_working_time
+        countdown_to_working_time: countdown_to_working_time,
+        COUNTDOWN_TONES: COUNTDOWN_TONES
       })
     });
     if (!response.ok) {
@@ -173,6 +175,7 @@ document.getElementById('goto').addEventListener('click', handleGoToButton);
   document.getElementById('competition_start_time').addEventListener('change', handleSetConfigButton);
   document.getElementById('use_strict_test_time').addEventListener('change', handleSetConfigButton);
   document.getElementById('countdown_to_working_time').addEventListener('change', handleSetConfigButton);
+  document.getElementById('COUNTDOWN_TONES').addEventListener('change', handleSetConfigButton);
 }
 
 

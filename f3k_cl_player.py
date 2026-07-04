@@ -223,6 +223,7 @@ class Player:
         self.event_config.setdefault('group_separation_time', 120)
         self.event_config.setdefault('competition_start_time', 600)  # 10:00 AM in minutes from midnight
         self.event_config.setdefault('countdown_to_working_time', False)
+        self.event_config.setdefault('COUNTDOWN_TONES', True)
         self.logger.info(f"Player configuration after defaults: {self.event_config}")
 
     def register_handlers(self):
@@ -303,13 +304,18 @@ class Player:
         self.state.goto(round, group)
 
     async def update_event_config(self, config_updates: dict):
-        allowed = {'prep_time', 'group_separation_time', 'use_strict_test_time', 'competition_start_time', 'countdown_to_working_time'}
+        allowed = {'prep_time', 'group_separation_time', 'use_strict_test_time', 'competition_start_time', 'countdown_to_working_time', 'COUNTDOWN_TONES'}
         for key in allowed:
             if key in config_updates:
-                if key in ('use_strict_test_time', 'countdown_to_working_time'):
+                if key in ('use_strict_test_time', 'countdown_to_working_time', 'COUNTDOWN_TONES'):
                     self.event_config[key] = bool(config_updates[key])
                 else:
                     self.event_config[key] = int(config_updates[key])
+        if 'COUNTDOWN_TONES' in config_updates:
+            # Takes effect for sections/sounds built from this point on (e.g. next event
+            # load or round/group rebuild) - already-built sections keep their prior beeps.
+            f3k_cl_competition.BEEPS_START_AT = 2 if self.event_config['COUNTDOWN_TONES'] else 0
+            audio_library.load_audio_library(self.event_config)
         self.logger.info(f"Event config updated: {self.event_config}")
 
     async def quit(self):
