@@ -27,6 +27,28 @@ extern "C"
 }
 
 // ---------------------------------------------------------------------------
+// Receive ring buffer — decouples Serial writes from the ESP-NOW callback
+// so that a full TX buffer never blocks onDataRecv.
+//
+// On ESP8266 the callback runs in the SDK WiFi task and can preempt loop();
+// volatile head/tail indices are sufficient for this single-producer /
+// single-consumer arrangement.
+// ---------------------------------------------------------------------------
+
+#define RECV_RING_LEN 8
+#define MAX_PACKET_LEN 251 // ESP-NOW max payload is 250 bytes
+
+struct RecvPacket
+{
+  uint8_t data[MAX_PACKET_LEN];
+  uint8_t len;
+};
+
+static RecvPacket s_recvRing[RECV_RING_LEN];
+static volatile uint8_t s_ringHead = 0; // written by callback
+static volatile uint8_t s_ringTail = 0; // read by loop()
+
+// ---------------------------------------------------------------------------
 // Pilot cache — populated from p_def messages
 // ---------------------------------------------------------------------------
 
@@ -98,37 +120,18 @@ void handlePilotList(JsonArrayConst data);
 
 void onDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len)
 {
-  // Packets are always < 250 bytes (asserted by the plugin).
-  StaticJsonDocument<512> doc;
+  // Copy into the ring buffer and return immediately — never block in this
+  // callback.  If the buffer is full the packet is silently dropped
+  // (preferable to stalling the SDK task while Serial drains its TX buffer).
+  uint8_t nextHead = (s_ringHead + 1) % RECV_RING_LEN;
+  if (nextHead == s_ringTail)
+    return; // buffer full, drop packet
 
-  DeserializationError err = deserializeJson(doc, incomingData, len);
-  if (err)
-  {
-    Serial.print(F("[ESPNow] JSON parse error: "));
-    Serial.println(err.c_str());
-    return;
-  }
-
-  const char *msgType = doc["t"] | "";
-  JsonVariant data = doc["d"];
-
-  if (strcmp(msgType, "time") == 0)
-  {
-    handleTime(data.as<JsonObjectConst>());
-  }
-  else if (strcmp(msgType, "p_def") == 0)
-  {
-    handlePilotDef(data.as<JsonObjectConst>());
-  }
-  else if (strcmp(msgType, "p_list") == 0)
-  {
-    handlePilotList(data.as<JsonArrayConst>());
-  }
-  else
-  {
-    Serial.printf("[ESPNow] Unknown message type: %s  raw (%d bytes): %.*s\n",
-                  msgType, len, len, (const char *)incomingData);
-  }
+  RecvPacket &pkt = s_recvRing[s_ringHead];
+  pkt.len = (len < MAX_PACKET_LEN) ? len : MAX_PACKET_LEN - 1;
+  memcpy(pkt.data, incomingData, pkt.len);
+  pkt.data[pkt.len] = '\0';
+  s_ringHead = nextHead;
 }
 
 // ---------------------------------------------------------------------------
@@ -163,16 +166,12 @@ void handleTime(JsonObjectConst data)
   }
 
   // TODO: update display, drive outputs, etc.
-  Serial.printf("[time] %s  R%d G%s F%d  no_fly=%d  sect=%s\n",
-                timeStr, roundNum, groupLet, flightNum, noFly, sect);
 }
 
 void handlePilotDef(JsonObjectConst data)
 {
   int id = data["id"] | 0;
   const char *name = data["name"] | "";
-
-  Serial.printf("[p_def] id=%d  name=%s\n", id, name);
 
   // Update existing cache entry or append a new one
   for (int i = 0; i < s_pilotCount; i++)
@@ -195,14 +194,13 @@ void handlePilotList(JsonArrayConst data)
 {
   // data is an ordered array of pilot IDs (integers) for the current group.
   // pilotName() resolves each ID to the name received in earlier p_def messages.
-  Serial.print(F("[p_list] group order: "));
   int pos = 1;
   for (JsonVariantConst v : data)
   {
     int id = v.as<int>();
-    Serial.printf("%d. %s  ", pos++, pilotName(id));
+    (void)pilotName(id);
+    pos++;
   }
-  Serial.println();
 
   // TODO: store ordered list and render to display
 }
@@ -213,8 +211,7 @@ void handlePilotList(JsonArrayConst data)
 
 void setup()
 {
-  Serial.begin(115200);
-  Serial.println(F("\n[F3K] ESP8266 ESP-NOW receiver starting"));
+  Serial.begin(19200);
 
   // ESP-NOW requires Wi-Fi in station mode; no AP association needed.
   // Channel must match the sender (f3k-timer broadcasts on channel 4).
@@ -224,19 +221,41 @@ void setup()
 
   if (esp_now_init() != 0)
   {
-    Serial.println(F("[ESPNow] Initialisation failed"));
     return;
   }
 
   esp_now_set_self_role(ESP_NOW_ROLE_SLAVE);
   esp_now_register_recv_cb(onDataRecv);
-
-  Serial.print(F("[ESPNow] Receiver ready. MAC: "));
-  Serial.println(WiFi.macAddress());
 }
 
 void loop()
 {
-  // ESP-NOW receive callbacks are delivered on the Arduino background task;
-  // add any periodic work (display refresh, etc.) here.
+  // Drain the receive ring buffer — Serial writes happen here, safely in loop().
+  while (s_ringTail != s_ringHead)
+  {
+    RecvPacket &pkt = s_recvRing[s_ringTail];
+
+    StaticJsonDocument<512> doc;
+    DeserializationError err = deserializeJson(doc, pkt.data, pkt.len);
+    if (!err)
+    {
+      // Write out the received packet verbatim
+      Serial.printf("%.*s\r\n", pkt.len, (const char *)pkt.data);
+
+      /*const char *msgType = doc["t"] | "";
+      JsonVariant data = doc["d"];
+
+      if (strcmp(msgType, "time") == 0)
+        handleTime(data.as<JsonObjectConst>());
+      else if (strcmp(msgType, "p_def") == 0)
+        handlePilotDef(data.as<JsonObjectConst>());
+      else if (strcmp(msgType, "p_list") == 0)
+        handlePilotList(data.as<JsonArrayConst>());
+      else
+        Serial.printf("[ESPNow] Unknown message type: %s  raw (%d bytes): %.*s\n",
+                      msgType, pkt.len, pkt.len, (const char *)pkt.data);*/
+    }
+
+    s_ringTail = (s_ringTail + 1) % RECV_RING_LEN;
+  }
 }
