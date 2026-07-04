@@ -36,7 +36,7 @@ class Section:
         if BEEPS_START_AT == 0: # Can't put sound at 0s, so start at 1s but has 1s leading silence.
             self.audio_times[1] = audio_library.effect_countdown_beeps
         else:
-            self.audio_times[BEEPS_START_AT] = audio_library.effect_countdown_beeps_end
+            self.audio_times[BEEPS_START_AT] = audio_library.effect_countdown_beeps
         self.pre_announce_times = {}
         self.announce_sound = None
         self.announce_sound_generating = False
@@ -285,6 +285,10 @@ class WorkingSection(Section):
     def get_description(self):
         return "Working Time"    
     def populate_audio_times(self):
+        # No override of audio_times[BEEPS_START_AT] here - this is intentional.
+        # The Section base class default (effect_countdown_beeps, the "normal"
+        # beep) is exactly what we want at the end of working time, so we just
+        # inherit it rather than setting it again explicitly.
         for t in [11, 12, 13, 14, 16, 17, 18, 19]:
             self.callout_schedule.pop(t, None)
         match self.sectionTime:
