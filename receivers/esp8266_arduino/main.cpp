@@ -55,11 +55,13 @@ static volatile uint8_t s_ringTail = 0; // read by loop()
 void onDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len)
 {
   // Discard duplicate packets — ESP-NOW can re-deliver the same frame.
-  // Filtering here keeps duplicates out of the ring buffer entirely, so they
-  // cannot crowd out legitimate packets before loop() gets a chance to drain.
+  // Exception: if no packet has been forwarded for 5 s, allow a duplicate
+  // through anyway to prevent the downstream device treating the link as down.
   static uint8_t lastData[MAX_PACKET_LEN];
   static uint8_t lastLen = 0;
-  if (len == lastLen && memcmp(incomingData, lastData, len) == 0)
+  static unsigned long lastSentMs = 0;
+  bool isDuplicate = (len == lastLen && memcmp(incomingData, lastData, len) == 0);
+  if (isDuplicate && (millis() - lastSentMs < 5000))
     return;
   lastLen = (len < MAX_PACKET_LEN) ? len : MAX_PACKET_LEN - 1;
   memcpy(lastData, incomingData, lastLen);
@@ -75,6 +77,7 @@ void onDataRecv(uint8_t *mac, uint8_t *incomingData, uint8_t len)
   pkt.len = (len < MAX_PACKET_LEN) ? len : MAX_PACKET_LEN - 1;
   memcpy(pkt.data, incomingData, pkt.len);
   pkt.data[pkt.len] = '\0';
+  lastSentMs = millis();
   asm volatile("" ::: "memory"); // ensure data is written before head advances
   s_ringHead = nextHead;
 }
