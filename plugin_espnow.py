@@ -12,6 +12,7 @@ class ESPNow(PluginBase):
         self.broadcast = self.config.get('broadcast', True) # Default to broadcast
         self.format = self.config.get('format', 'json') # Default format json|struct
         self.port = None
+        self.rate_limit = 1 / 3 # 3 updates per second in addition to the onSecond updates
         self.init_port()
     
     def write(self, s):
@@ -43,7 +44,7 @@ class ESPNow(PluginBase):
             self.logger.error("Failed to decode json.")
         try:
             command = msg_dict['command'].strip()
-        except IndexError:
+        except KeyError:
             return
         c = {'<SKIP': 'skip_previous','SKIP>':'skip_next','UN/PAUSE':'pause','REW':'skip_back','FWD':'skip_fwd'}.get(command, 'pause')
         try: 
@@ -74,8 +75,12 @@ class ESPNow(PluginBase):
             self.write_message('time', state.get_dict())
 
     async def onSecond(self, state):
+        ## Send time message with no delay
+        self.write_message('time', state.get_dict())
+
         ## Decide if we want to send group/pilot info (doing it less frequently)
         ## In prep section - send pilot defs every minute and at start of section
+        
         if isinstance(state.section, f3k_cl_competition.PrepSection):
             if (state.slot_time % 60 == 55) or (state.slot_time == state.section.sectionTime):
             # Send each pilot definition
