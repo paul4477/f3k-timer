@@ -167,8 +167,6 @@ class PrepSection(Section):
                 [15] + list(range(10, BEEPS_START_AT, -1))
         }
 
-        self.callout_schedule.pop(self.sectionTime - 120, None)
-
         if isinstance(self.get_next_section(), TestSection):
             if BEEPS_START_AT == 0:
                 self.set_audio_time(1, audio_library.effect_countdown_beeps)
@@ -182,7 +180,9 @@ class PrepSection(Section):
 
         self.set_audio_time(self.sectionTime - 1, audio_library.language_audio['vx_prep_start'])
         self.set_audio_time(self.sectionTime - 5, audio_library.task_audio[self.round.short_code])
-        self.set_audio_time(self.sectionTime - 120, self.announcement)
+        
+        self.callout_schedule.pop(self.sectionTime - 60, None)
+        self.set_audio_time(self.sectionTime - 60, self.announcement)
 
     def announcement(self):
         return self.group.announce_sound
