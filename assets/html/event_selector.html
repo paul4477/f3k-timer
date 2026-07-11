@@ -59,6 +59,9 @@
 
     <h3>Event Details</h3>
     <div id="event-details"></div>
+
+    <h3>Saved Events (Offline)</h3>
+    <ul id="saved-events-list" class="list-group"></ul>
   </div>
 
   <script>
@@ -108,6 +111,119 @@
         dateTo: document.getElementById("date-to").value
       };
       setCookie('eventSearchForm', formData);
+    }
+
+    // ---- Offline saved-event storage (localStorage) ----
+    const SAVED_EVENTS_KEY = 'f3k_saved_events_v1';
+
+    function getSavedEvents() {
+      try {
+        const raw = localStorage.getItem(SAVED_EVENTS_KEY);
+        const parsed = raw ? JSON.parse(raw) : [];
+        return Array.isArray(parsed) ? parsed : [];
+      } catch (e) {
+        console.error("Error reading saved events:", e);
+        return [];
+      }
+    }
+
+    function setSavedEvents(list) {
+      try {
+        localStorage.setItem(SAVED_EVENTS_KEY, JSON.stringify(list));
+      } catch (e) {
+        console.error("Error saving events:", e);
+        alert("Could not save event for offline use: " + e.message);
+      }
+    }
+
+    function saveEventOffline(eventJson) {
+      if (!eventJson) {
+        alert("No event JSON available to save.");
+        return;
+      }
+      const details = (eventJson && eventJson.event) ? eventJson.event : eventJson;
+      const record = {
+        event_id: details.event_id || details.id,
+        event_name: details.event_name || details.name || "Unnamed event",
+        event_type_code: details.event_type_code || "",
+        country_code: details.country_code || "",
+        start_date: details.start_date || "",
+        end_date: details.end_date || "",
+        saved_at: new Date().toISOString(),
+        json: eventJson
+      };
+      const list = getSavedEvents().filter(e => e.event_id !== record.event_id);
+      list.unshift(record);
+      setSavedEvents(list);
+      renderSavedEventsList();
+    }
+
+    function deleteSavedEvent(event_id) {
+      if (!window.confirm("Delete this saved event?")) return;
+      const list = getSavedEvents().filter(e => e.event_id !== event_id);
+      setSavedEvents(list);
+      renderSavedEventsList();
+    }
+
+    async function loadSavedEvent(event_id) {
+      const record = getSavedEvents().find(e => e.event_id === event_id);
+      if (!record) {
+        alert("Saved event not found.");
+        return;
+      }
+      try {
+        const res = await fetch("/load_event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(record.json)
+        });
+        if (res.redirected) {
+          window.location.href = res.url;
+          return;
+        }
+      } catch (err) {
+        alert("Error loading saved event: " + err.message);
+      }
+    }
+
+    function renderSavedEventsList() {
+      const list = document.getElementById("saved-events-list");
+      list.innerHTML = "";
+      const savedEvents = getSavedEvents();
+      if (savedEvents.length === 0) {
+        const li = document.createElement("li");
+        li.className = "list-group-item";
+        li.textContent = "No saved events";
+        list.appendChild(li);
+        return;
+      }
+      savedEvents.forEach(record => {
+        const li = document.createElement("li");
+        li.className = "list-group-item";
+
+        const info = document.createElement("span");
+        const savedDate = new Date(record.saved_at);
+        info.textContent = `${record.event_name} (${record.event_id}) — ${record.country_code} ${record.event_type_code} — saved ${savedDate.toLocaleString()}`;
+        li.appendChild(info);
+
+        const btnGroup = document.createElement("div");
+        btnGroup.className = "btn-group pull-right";
+
+        const loadBtn = document.createElement("button");
+        loadBtn.className = "btn btn-success btn-xs";
+        loadBtn.textContent = "Load";
+        loadBtn.onclick = () => loadSavedEvent(record.event_id);
+        btnGroup.appendChild(loadBtn);
+
+        const deleteBtn = document.createElement("button");
+        deleteBtn.className = "btn btn-danger btn-xs";
+        deleteBtn.textContent = "Delete";
+        deleteBtn.onclick = () => deleteSavedEvent(record.event_id);
+        btnGroup.appendChild(deleteBtn);
+
+        li.appendChild(btnGroup);
+        list.appendChild(li);
+      });
     }
 
     function loadFormData() {
@@ -312,7 +428,14 @@ function renderEventDetails(details) {
     }
   };
 
+  const saveOfflineBtn = document.createElement("button");
+  saveOfflineBtn.className = "btn btn-default";
+  saveOfflineBtn.style.marginLeft = "8px";
+  saveOfflineBtn.textContent = "Save for Offline";
+  saveOfflineBtn.onclick = () => saveEventOffline(lastEventJson);
+
   footer.appendChild(loadBtn);
+  footer.appendChild(saveOfflineBtn);
   panel.appendChild(footer);
 
   container.appendChild(panel);
@@ -330,6 +453,7 @@ function renderEventDetails(details) {
     window.onload = () => {
       loadFormData();
       populateEvents();
+      renderSavedEventsList();
     };
   </script>
 </body>
