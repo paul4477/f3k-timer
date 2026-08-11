@@ -181,8 +181,8 @@ class PrepSection(Section):
         self.set_audio_time(self.sectionTime - 1, audio_library.language_audio['vx_prep_start'])
         self.set_audio_time(self.sectionTime - 5, audio_library.task_audio[self.round.short_code])
         
-        self.callout_schedule.pop(self.sectionTime - 60, None)
-        self.set_audio_time(self.sectionTime - 60, self.announcement)
+        self.callout_schedule.pop(self.sectionTime - 30, None)
+        self.set_audio_time(self.sectionTime - 30, self.announcement)
 
     def announcement(self):
         return self.group.announce_sound
@@ -548,6 +548,10 @@ class Round():
                 except IndexError:
                     self.logger.warning(f"Pilot {pilot['pilot_id']} has no data for round {self.round_number}")
                     continue
+
+            if not round_data.get('flights'):
+                # Round has no flight data - possibly an extra round at the end with no tasks/draw assinged. Skip it.
+                continue
 
             flight_group = round_data['flights'][0]['flight_group']
             letters= "-ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Adding '-' so index matches group number
