@@ -350,7 +350,14 @@ class Player:
             if self.state.group.announce_sound is None and not self.state.group.announce_sound_generating:
                 announcement = f"This is Round {self.state.round.round_number}. Group: {self.state.group.group_letter}.\n"
                 announcement += "Pilot List.\n"
-                announcement += "\n".join(list(self.pilots[id].name for id in self.state.group.pilots))
+                pilot_names = []
+                for id in self.state.group.pilots:
+                    pilot = self.pilots.get(id)
+                    if pilot is None:
+                        self.logger.warning(f"Pilot id {id} in group {self.state.group.group_letter} not found in pilot list; skipping in announcement")
+                        continue
+                    pilot_names.append(pilot.name)
+                announcement += "\n".join(pilot_names)
 
                 self.state.group.announce_sound_generating = True
                 # Sets group.announce_sound to generated wav
