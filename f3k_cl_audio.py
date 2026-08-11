@@ -26,7 +26,10 @@ class AudioPlayer(PluginBase):
     async def onSecond(self, state):
       ## Triggered on every change of second
       ## Logic here to decide what sound to play
-      
+
+      if state.section is None:
+          return
+
       ## Look for customer audio events in this section
       audio = state.section.audio_times.get(state.slot_time, None)
       if audio:
