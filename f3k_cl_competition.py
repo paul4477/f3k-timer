@@ -555,6 +555,9 @@ class Round():
                 continue
 
             flight_group = round_data['flights'][0]['flight_group']
+            if not flight_group:
+                # Round hasn't been drawn yet for this pilot (e.g. future round with no group assigned). Skip it.
+                continue
             letters= "-ABCDEFGHIJKLMNOPQRSTUVWXYZ" # Adding '-' so index matches group number
             group_number = letters.index(flight_group)
             self.group_count = max(self.group_count, group_number)
@@ -576,6 +579,9 @@ class Round():
                     continue
 
                 for flight in round_data['flights']:
+                    if not flight['flight_group']:
+                        # Round hasn't been drawn yet for this pilot (e.g. future round with no group assigned). Skip it.
+                        continue
                     if flight['flight_group'] not in groups:
                         groups[flight['flight_group']] = []
                     groups[flight['flight_group']].append(pilot_id)
