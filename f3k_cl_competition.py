@@ -543,9 +543,10 @@ class Round():
         
         for pilot in self.standings_data:
             if len(pilot['rounds']) >= 0:
-                # Only look at this round
-                try: round_data = pilot['rounds'][self.round_number - 1]
-                except IndexError:
+                # Only look at this round - match by round_number, not array position,
+                # since the API does not guarantee 'rounds' is ordered sequentially.
+                round_data = next((r for r in pilot['rounds'] if r.get('round_number') == self.round_number), None)
+                if round_data is None:
                     self.logger.warning(f"Pilot {pilot['pilot_id']} has no data for round {self.round_number}")
                     continue
 
@@ -567,9 +568,10 @@ class Round():
             
             # prelim_standings.standings[pilot.rounds[round.flights[flight_group]]]
             if len(pilot['rounds']) >= 0:
-                # Only look at this round
-                try: round_data = pilot['rounds'][self.round_number - 1]
-                except IndexError:
+                # Only look at this round - match by round_number, not array position,
+                # since the API does not guarantee 'rounds' is ordered sequentially.
+                round_data = next((r for r in pilot['rounds'] if r.get('round_number') == self.round_number), None)
+                if round_data is None:
                     self.logger.warning(f"Pilot {pilot_id} has no data for round {self.round_number}")
                     continue
 
